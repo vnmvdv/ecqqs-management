@@ -353,7 +353,7 @@
   /* ---------- Mobile top bar + drawer ---------- */
   .topbar {
     display: none; position: sticky; top: 0; z-index: 30;
-    grid-template-columns: 34px 1fr 34px; align-items: center; column-gap: 12px;
+    grid-template-columns: 62px 1fr 62px; align-items: center; column-gap: 10px;
     background: var(--paper); border-bottom: 2px solid var(--ink);
     padding: max(14px, env(safe-area-inset-top)) max(var(--gutter), env(safe-area-inset-right)) 12px max(var(--gutter), env(safe-area-inset-left));
   }
@@ -507,6 +507,22 @@
   .dev-role.current { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--paper)); }
   .dev-role:disabled { opacity: .6; cursor: wait; }
   .dev-grid .dev-role:first-child { grid-column: 1 / -1; }
+
+
+  /* ---------- Top bar: smaller buttons, dev button next to profile ---------- */
+  .topbar .menu-btn, .topbar .me-btn, .tb-dev { width: 28px; height: 28px; }
+  .topbar .menu-btn svg { width: 16px; height: 16px; }
+  .topbar .me-btn { font-size: 11px; }
+  .tb-right { justify-self: end; display: flex; gap: 6px; align-items: center; }
+  .tb-dev {
+    display: inline-grid; place-items: center; padding: 0; cursor: pointer; position: relative; font-size: 14px; line-height: 1;
+    background: var(--card); border: 1.5px solid var(--warn); border-radius: var(--radius);
+  }
+  .tb-dev::after { content: ""; position: absolute; inset: -4px; }
+  .tb-dev[hidden] { display: none; }
+  .tb-dev:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .topbar .menu-btn .dot { top: 2px; right: 2px; width: 7px; height: 7px; }
+  @media (max-width: 820px) { .dev-fab { display: none !important; } }
 
   /* ---------- Toast ---------- */
   #toast {
@@ -681,7 +697,10 @@
       <span class="dot" id="menu-dot" hidden></span>
     </button>
     <div class="tb-brand">EverClean QQS<small>Система за управление</small></div>
-    <button class="me-btn" id="me-btn" aria-haspopup="dialog" aria-label="Моят профил">?</button>
+    <div class="tb-right">
+      <button class="tb-dev" id="dev-top" title="Тест: смяна на роля" aria-label="Тест: смяна на роля" hidden>🛠️</button>
+      <button class="me-btn" id="me-btn" aria-haspopup="dialog" aria-label="Моят профил">?</button>
+    </div>
   </div>
   <div id="menu-backdrop" hidden></div>
   <aside id="app-menu" aria-label="Меню">
@@ -1676,7 +1695,7 @@ const isImpersonating = () => !!(me?.is_dev && devReturn());
 
 function updateDevUI() {
   const imp = isImpersonating();
-  $('dev-fab').hidden = !(imp || (isOwner() && !me?.is_dev));
+  $('dev-fab').hidden = $('dev-top').hidden = !(imp || (isOwner() && !me?.is_dev));
   $('dev-bar').hidden = !imp;
   if (imp) $('dev-bar-role').textContent = ROLE_LABELS[me.role] || me.role;
   document.querySelectorAll('.dev-role').forEach((b) => {
@@ -1735,7 +1754,9 @@ async function devSwitch(role) {
     buttons.forEach((b) => { b.disabled = false; });
   }
 }
-$('dev-fab').addEventListener('click', () => { setAlert('dev-alert'); updateDevUI(); $('dlg-dev').showModal(); });
+const openDev = () => { setAlert('dev-alert'); updateDevUI(); setMenu(false); $('dlg-dev').showModal(); };
+$('dev-fab').addEventListener('click', openDev);
+$('dev-top').addEventListener('click', openDev);
 document.querySelectorAll('.dev-role').forEach((b) => b.addEventListener('click', () => devSwitch(b.dataset.role)));
 $('dev-back').addEventListener('click', restoreOwner);
 
