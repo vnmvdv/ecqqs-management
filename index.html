@@ -412,6 +412,31 @@
   .pf-dl { display: grid; grid-template-columns: 130px 1fr; gap: 8px 12px; font-size: 14px; margin-bottom: 14px; }
   .pf-dl dt { color: var(--muted); }
 
+
+  /* ---------- One button system: every button is a rectangle with the same corner radius ---------- */
+  .link {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 36px; padding: 0 12px;
+    background: transparent; color: var(--ink);
+    border: 1.5px solid var(--rule); border-radius: var(--radius);
+    font-weight: 600; font-size: 13.5px; text-decoration: none; cursor: pointer;
+  }
+  .link:hover { border-color: var(--ink); text-decoration: none; }
+  .link:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--radius); }
+  .link.back { margin-bottom: 16px; padding-left: 8px; }
+  .sheet .x, .drawer-close {
+    width: 34px; height: 34px; padding: 0; display: inline-grid; place-items: center;
+    background: transparent; color: var(--ink); font-size: 20px; line-height: 1;
+    border: 1.5px solid var(--rule); border-radius: var(--radius); cursor: pointer;
+  }
+  .sheet .x { top: 16px; right: 16px; }
+  .sheet .x:hover, .drawer-close:hover { border-color: var(--ink); }
+  .me-btn { border-radius: var(--radius); }
+  .avatar { border-radius: var(--radius); }
+  .chip { border-radius: var(--radius); }
+  .btn { border-radius: var(--radius); }
+  .pf-head { padding-right: 46px; }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -597,7 +622,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.8 — моят профил</div>
+      <div class="version">v0.9 — единни бутони</div>
     </div>
   </aside>
 
