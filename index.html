@@ -19,7 +19,7 @@
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preconnect" href="https://cjiiaopamwukcgsuddnv.supabase.co">
+<link rel="preconnect" href="https://dyshtvanqgkhwxzjkxve.supabase.co">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -364,7 +364,7 @@
 <div id="view-reset" class="auth" hidden>
   <div class="auth-card">
     <div class="masthead"><div class="logo">EverClean QQS</div></div>
-    <h1>Нова парола</h1>
+    <h1 id="reset-title">Нова парола</h1>
     <p class="lead" id="reset-lead">Изберете нова парола за акаунта си.</p>
 
     <div id="reset-alert" role="alert" aria-live="assertive"></div>
@@ -417,7 +417,7 @@
         </div>
       </div>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.2 — вход</div>
+      <div class="version">v0.3 — вход</div>
     </div>
   </aside>
 
@@ -450,8 +450,8 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
    Config — the publishable key is safe to ship in the browser;
    all data access is protected by Row Level Security in Supabase.
 ------------------------------------------------------------------ */
-const SUPABASE_URL = 'https://cjiiaopamwukcgsuddnv.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_36_y4xUqSGLR27c7Hz39EA_IOSrG8Wt';
+const SUPABASE_URL = 'https://dyshtvanqgkhwxzjkxve.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_wSEjtUEitACTIjy7Kab6gw_2FAX0ba3';
 const STORAGE_KEY  = 'ecqqs-mgmt-auth';
 const REMEMBER_KEY = 'ecqqs-remember';
 const EMAIL_KEY    = 'ecqqs-last-email';
@@ -735,7 +735,7 @@ $('reset-form').addEventListener('submit', async (e) => {
   clearFails();
   history.replaceState(null, '', location.pathname);
   $('reset-password').value = $('reset-confirm').value = '';
-  toast('Паролата е сменена успешно.');
+  toast(isInvite ? 'Паролата е създадена. Добре дошли!' : 'Паролата е сменена успешно.');
   const { data: s } = await supabase.auth.getSession();
   await enterApp(s.session);
 });
@@ -755,9 +755,11 @@ async function enterApp(session) {
     if (navigator.onLine) console.warn('Profile load failed', error);
   } else if (!profile || profile.status !== 'active') {
     await supabase.auth.signOut();
-    setAlert('login-alert', 'error', !profile
+    setAlert('login-alert', !profile || profile.status === 'disabled' ? 'error' : 'info', !profile
       ? 'Акаунтът ви няма профил в системата. Свържете се със собственик.'
-      : 'Акаунтът ви е деактивиран. Свържете се със собственик.');
+      : profile.status === 'pending'
+        ? 'Акаунтът ви очаква одобрение от собственик. Ще можете да влезете, щом бъде активиран.'
+        : 'Акаунтът ви е деактивиран. Свържете се със собственик.');
     return show('view-login');
   }
 
@@ -788,7 +790,19 @@ $('logout-btn').addEventListener('click', async () => {
 
 /* ---------- Boot ---------- */
 const hash = new URLSearchParams(location.hash.slice(1));
-let recovering = hash.get('type') === 'recovery';
+const linkType = hash.get('type');
+const isInvite = linkType === 'invite';
+let recovering = linkType === 'recovery' || isInvite;
+
+function openSetPassword(session) {
+  const email = session?.user?.email || '';
+  $('reset-username').value = email;
+  $('reset-title').textContent = isInvite ? 'Създайте парола' : 'Нова парола';
+  $('reset-lead').textContent = isInvite
+    ? `Добре дошли в EverClean QQS! Изберете парола за ${email || 'акаунта си'}.`
+    : `Изберете нова парола за ${email || 'акаунта си'}.`;
+  show('view-reset');
+}
 
 // Expired / invalid reset link
 if (hash.get('error')) {
@@ -805,11 +819,9 @@ supabase.auth.onAuthStateChange((event, session) => {
   setTimeout(async () => {
     if (event === 'PASSWORD_RECOVERY') {
       recovering = true;
-      $('reset-username').value = session?.user?.email || '';
-      $('reset-lead').textContent = `Изберете нова парола за ${session?.user?.email || 'акаунта си'}.`;
-      return show('view-reset');
+      return openSetPassword(session);
     }
-    if (recovering) return;
+    if (recovering) { if (session && $('view-reset').hidden) openSetPassword(session); return; }
     if (event === 'SIGNED_OUT') { currentUserId = null; if ($('view-forgot').hidden) show('view-login'); return; }
     if (event === 'INITIAL_SESSION') {
       if (session) await enterApp(session);
