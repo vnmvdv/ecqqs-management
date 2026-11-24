@@ -353,7 +353,7 @@
   /* ---------- Mobile top bar + drawer ---------- */
   .topbar {
     display: none; position: sticky; top: 0; z-index: 30;
-    grid-template-columns: 44px 1fr 44px; align-items: center; column-gap: 12px;
+    grid-template-columns: 34px 1fr 34px; align-items: center; column-gap: 12px;
     background: var(--paper); border-bottom: 2px solid var(--ink);
     padding: max(14px, env(safe-area-inset-top)) max(var(--gutter), env(safe-area-inset-right)) 12px max(var(--gutter), env(safe-area-inset-left));
   }
@@ -367,13 +367,15 @@
   }
   .topbar .menu-btn { justify-self: start; }
   .menu-btn {
-    display: inline-grid; place-items: center; width: 44px; height: 44px; padding: 0;
+    display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0;
     background: var(--ink); color: var(--paper); border: none; border-radius: var(--radius);
     font-weight: 600; font-size: 15px; cursor: pointer; position: relative; 
   }
-  .menu-btn svg { width: 22px; height: 22px; }
+  .menu-btn svg { width: 18px; height: 18px; }
+  /* keep a comfortable touch area around the smaller button */
+  .menu-btn::after { content: ""; position: absolute; inset: -6px; }
   .menu-btn .cur { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .menu-btn .dot { position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--warn); border: 2px solid var(--ink); }
+  .menu-btn .dot { position: absolute; top: 3px; right: 3px; width: 8px; height: 8px; border-radius: 50%; background: var(--warn); border: 2px solid var(--ink); }
   .menu-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   .drawer-head { display: none; align-items: center; justify-content: space-between; margin-bottom: 4px; }
   .drawer-head .lbl { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
