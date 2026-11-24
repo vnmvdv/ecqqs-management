@@ -475,6 +475,39 @@
     .sqrow #u-filters { width: auto; justify-content: center; }
   }
 
+
+  /* ---------- Dev role switcher ---------- */
+  .dev-fab {
+    position: fixed; z-index: 45; right: max(16px, env(safe-area-inset-right)); bottom: max(16px, env(safe-area-inset-bottom));
+    width: 44px; height: 44px; display: grid; place-items: center; font-size: 20px; cursor: pointer;
+    background: var(--card); border: 1.5px solid var(--warn); border-radius: var(--radius);
+    box-shadow: 0 4px 14px rgba(0,0,0,.25);
+  }
+  .dev-fab[hidden] { display: none; }
+  .dev-fab:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  #dev-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    background: var(--warn-bg); color: var(--warn); font-size: 13px; border-bottom: 1px solid var(--rule);
+    padding: max(8px, env(safe-area-inset-top)) max(var(--gutter), env(safe-area-inset-right)) 8px max(var(--gutter), env(safe-area-inset-left));
+  }
+  #dev-bar[hidden] { display: none; }
+  .dev-back {
+    min-height: 32px; padding: 0 12px; font-weight: 600; font-size: 13px; cursor: pointer; white-space: nowrap;
+    background: transparent; color: var(--warn); border: 1.5px solid var(--warn); border-radius: var(--radius);
+  }
+  .dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .dev-role {
+    display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px; text-align: left;
+    min-height: 60px; padding: 8px 12px; cursor: pointer;
+    background: var(--paper); border: 1.5px solid var(--rule); border-radius: var(--radius); font-weight: 600; font-size: 14px;
+  }
+  .dev-role .emo { width: 44px; height: 44px; display: grid; place-items: center; font-size: 22px; background: var(--card); border: 1px solid var(--rule); border-radius: var(--radius); }
+  .dev-role small { display: block; font-weight: 400; font-size: 12px; color: var(--muted); }
+  .dev-role:hover { border-color: var(--ink); }
+  .dev-role.current { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--paper)); }
+  .dev-role:disabled { opacity: .6; cursor: wait; }
+  .dev-grid .dev-role:first-child { grid-column: 1 / -1; }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -637,6 +670,10 @@
 </div>
 
 <!-- ========== App ========== -->
+<div id="dev-bar" hidden role="status">
+  <span>🛠️ Тестов режим: <b id="dev-bar-role">—</b></span>
+  <button class="dev-back" id="dev-back">↩ Към собственик</button>
+</div>
 <div id="view-app" hidden>
   <div class="topbar">
     <button class="menu-btn" id="menu-btn" aria-controls="app-menu" aria-expanded="false" aria-label="Раздели">
@@ -660,7 +697,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.11 — бутони в един ред</div>
+      <div class="version">v0.12 — тест на роли</div>
     </div>
   </aside>
 
@@ -872,6 +909,25 @@
   </div>
 </dialog>
 
+<!-- Dev: switch role (owners only) -->
+<button class="dev-fab" id="dev-fab" title="Тест: смяна на роля" aria-label="Тест: смяна на роля" hidden>🛠️</button>
+<dialog class="sheet" id="dlg-dev" aria-labelledby="dev-title">
+  <div class="sheet-inner">
+    <button class="x" data-close aria-label="Затвори">×</button>
+    <h2 id="dev-title">Тест: смяна на роля</h2>
+    <p class="lead">Влизате като тестов потребител с избраната роля и виждате системата точно като него. Само собствениците имат този бутон.</p>
+    <div id="dev-alert" role="alert"></div>
+    <div class="dev-grid" id="dev-grid">
+      <button class="dev-role" data-role="owner"><span class="emo">👑</span><span>Собственик<small>Вие</small></span></button>
+      <button class="dev-role" data-role="manager"><span class="emo">🧭</span><span>Мениджър</span></button>
+      <button class="dev-role" data-role="cleaner"><span class="emo">🧹</span><span>Хигиенист</span></button>
+      <button class="dev-role" data-role="client"><span class="emo">🏠</span><span>Клиент</span></button>
+      <button class="dev-role" data-role="accountant"><span class="emo">📊</span><span>Счетоводител</span></button>
+    </div>
+    <p class="note">Тестовите акаунти (dev-…@example.com) не се показват в „Потребители“ и не могат да влизат с парола.</p>
+  </div>
+</dialog>
+
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script type="module">
@@ -930,6 +986,7 @@ const $ = (id) => document.getElementById(id);
 const views = ['view-loading', 'view-login', 'view-forgot', 'view-reset', 'view-app'];
 function show(view) {
   views.forEach((v) => { $(v).hidden = v !== view; });
+  if (view !== 'view-app') { $('dev-fab').hidden = true; $('dev-bar').hidden = true; }
   const focusMap = { 'view-login': $('login-email').value ? 'login-password' : 'login-email', 'view-forgot': 'forgot-email', 'view-reset': 'reset-password' };
   // auto-focus only on devices with a mouse, so phones don't pop the keyboard unasked
   if (focusMap[view] && window.matchMedia('(hover: hover)').matches) {
@@ -1254,7 +1311,7 @@ async function enterApp(session) {
   if (currentUserId === user.id && !$('view-app').hidden) return;
 
   const { data: profile, error } = await supabase
-    .from('profiles').select('id,email,fname,lname,phone,role,status').eq('id', user.id).maybeSingle();
+    .from('profiles').select('id,email,fname,lname,phone,role,status,is_dev').eq('id', user.id).maybeSingle();
 
   if (error) {
     if (navigator.onLine) console.warn('Profile load failed', error);
@@ -1275,11 +1332,13 @@ async function enterApp(session) {
   buildNav();
   $('u-add').hidden = !isOwner();
   show('view-app');
+  updateDevUI();
   go(ls.get(SECTION_KEY) || 'dashboard');
   if (['owner', 'manager'].includes(me?.role)) refreshPendingBadge();
 }
 
 $('logout-btn').addEventListener('click', async () => {
+  if (isImpersonating()) return restoreOwner();
   const btn = $('logout-btn'); btn.disabled = true;
   try { await supabase.auth.signOut(); } catch {}
   authStorage.removeItem(STORAGE_KEY);
@@ -1300,7 +1359,7 @@ const STATUS_LABELS = { active: 'Активен', pending: 'Чака одобр�
 });
 
 async function refreshPendingBadge() {
-  const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending');
+  const { count } = await supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending').eq('is_dev', false);
   const badge = document.querySelector('#nav button[data-section="users"] .navcount');
   if (badge) { badge.textContent = count || ''; badge.hidden = !count; }
   $('menu-dot').hidden = !count;
@@ -1309,7 +1368,7 @@ async function refreshPendingBadge() {
 async function loadUsers() {
   if (!users.length) $('u-list').innerHTML = '<div class="empty">Зареждане…</div>';
   const { data, error } = await supabase.from('profiles')
-    .select('id,email,fname,lname,phone,role,status,created_at').order('created_at', { ascending: true });
+    .select('id,email,fname,lname,phone,role,status,created_at').eq('is_dev', false).order('created_at', { ascending: true });
   if (error) { $('u-list').innerHTML = `<div class="empty">Неуспешно зареждане. ${esc(authMessage(error))}</div>`; return; }
   users = data || [];
   renderUsers();
@@ -1608,6 +1667,78 @@ $('dlg-profile').addEventListener('close', () => {
 });
 $('pf-logout').addEventListener('click', () => { $('dlg-profile').close(); $('logout-btn').click(); });
 
+
+/* ---------- Dev: switch role (owners only) ---------- */
+const DEV_RETURN_KEY = 'ecqqs-dev-return';
+let switching = false;
+const devReturn = () => { try { return JSON.parse(ls.get(DEV_RETURN_KEY)); } catch { return null; } };
+const isImpersonating = () => !!(me?.is_dev && devReturn());
+
+function updateDevUI() {
+  const imp = isImpersonating();
+  $('dev-fab').hidden = !(imp || (isOwner() && !me?.is_dev));
+  $('dev-bar').hidden = !imp;
+  if (imp) $('dev-bar-role').textContent = ROLE_LABELS[me.role] || me.role;
+  document.querySelectorAll('.dev-role').forEach((b) => {
+    const cur = imp ? b.dataset.role === me.role : b.dataset.role === 'owner';
+    b.classList.toggle('current', cur);
+  });
+  if (!imp && !me?.is_dev) ls.del(DEV_RETURN_KEY); // back as the real owner: forget stale return info
+}
+
+async function reenter() {
+  const { data } = await supabase.auth.getSession();
+  currentUserId = null; me = null; users = [];
+  await enterApp(data.session);
+}
+
+async function restoreOwner() {
+  const saved = devReturn();
+  if (!saved) return;
+  switching = true;
+  try {
+    try { await supabase.auth.signOut({ scope: 'local' }); } catch {}
+    const { error } = await supabase.auth.setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token });
+    ls.del(DEV_RETURN_KEY);
+    if (error) {
+      setAlert('login-alert', 'info', 'Тестовата сесия приключи. Влезте отново като собственик.');
+      currentUserId = null; me = null; show('view-login'); return;
+    }
+    $('dlg-dev').open && $('dlg-dev').close();
+    await reenter();
+    toast('Обратно като собственик.');
+  } finally { switching = false; }
+}
+
+async function devSwitch(role) {
+  setAlert('dev-alert');
+  if (role === 'owner') return isImpersonating() ? restoreOwner() : $('dlg-dev').close();
+  if (isImpersonating() && me.role === role) return $('dlg-dev').close();
+  const buttons = document.querySelectorAll('.dev-role');
+  buttons.forEach((b) => { b.disabled = true; });
+  switching = true;
+  try {
+    if (isImpersonating()) { switching = false; await restoreOwner(); switching = true; }
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Няма активна сесия.');
+    const res = await adminCall({ action: 'dev_switch', role });
+    ls.set(DEV_RETURN_KEY, JSON.stringify({ access_token: session.access_token, refresh_token: session.refresh_token, email: session.user.email }));
+    const { error } = await supabase.auth.verifyOtp({ token_hash: res.token_hash, type: 'magiclink' });
+    if (error) { ls.del(DEV_RETURN_KEY); throw error; }
+    $('dlg-dev').close();
+    await reenter();
+    toast(`Сега сте: ${ROLE_LABELS[role]} (тест)`);
+  } catch (err) {
+    setAlert('dev-alert', 'error', err.message || authMessage(err));
+  } finally {
+    switching = false;
+    buttons.forEach((b) => { b.disabled = false; });
+  }
+}
+$('dev-fab').addEventListener('click', () => { setAlert('dev-alert'); updateDevUI(); $('dlg-dev').showModal(); });
+document.querySelectorAll('.dev-role').forEach((b) => b.addEventListener('click', () => devSwitch(b.dataset.role)));
+$('dev-back').addEventListener('click', restoreOwner);
+
 /* ---------- Boot ---------- */
 const hash = new URLSearchParams(location.hash.slice(1));
 const linkType = hash.get('type');
@@ -1646,6 +1777,7 @@ supabase.auth.onAuthStateChange((event, session) => {
       return openSetPassword(session);
     }
     if (recovering) { if (session && $('view-reset').hidden) openSetPassword(session); return; }
+    if (switching) return;
     if (event === 'USER_UPDATED' && session && currentUserId) { currentUser = session.user; renderMe(currentUser); return; }
     if (event === 'SIGNED_OUT') { currentUserId = null; if ($('view-forgot').hidden) show('view-login'); return; }
     if (event === 'INITIAL_SESSION') {

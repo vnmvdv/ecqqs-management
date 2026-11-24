@@ -4,6 +4,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const APP_URL = "https://ecqqs-management.netlify.app/";
 const ROLES = ["owner", "manager", "cleaner", "client", "accountant"];
+const DEV_ROLES: Record<string, string> = { manager: "Мениджър", cleaner: "Хигиенист", client: "Клиент", accountant: "Счетоводител" };
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -27,8 +28,8 @@ Deno.serve(async (req) => {
   const token = (req.headers.get("Authorization") || "").replace(/^Bearer\s+/i, "");
   const { data: who, error: whoErr } = await admin.auth.getUser(token);
   if (whoErr || !who?.user) return fail("Не сте влезли в системата.", 401);
-  const { data: me } = await admin.from("profiles").select("role,status").eq("id", who.user.id).maybeSingle();
-  if (!me || me.role !== "owner" || me.status !== "active") return fail("Само собственик може да управлява потребители.", 403);
+  const { data: me } = await admin.from("profiles").select("role,status,is_dev").eq("id", who.user.id).maybeSingle();
+  if (!me || me.role !== "owner" || me.status !== "active" || me.is_dev) return fail("Само собственик може да управлява потребители.", 403);
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return fail("Невалидна заявка."); }
@@ -81,6 +82,27 @@ Deno.serve(async (req) => {
       } as never);
       if (error) throw error;
       return json({ ok: true, link: data.properties.action_link, type });
+    }
+
+    if (action === "dev_switch") {
+      // Owner-only: sign in as a test account of the given role (created on first use)
+      const role = String(body.role || "");
+      if (!DEV_ROLES[role]) return fail("Непозната роля.");
+      const email = `dev-${role}@example.com`;
+      let { data: prof } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+      if (!prof) {
+        const pw = crypto.randomUUID() + crypto.randomUUID(); // never shown; access only via this switch
+        const { data, error } = await admin.auth.admin.createUser({ email, password: pw, email_confirm: true });
+        if (error) throw error;
+        prof = { id: data.user.id };
+      }
+      const { error: upErr } = await admin.from("profiles").update({
+        role, status: "active", is_dev: true, fname: "Тест", lname: DEV_ROLES[role],
+      }).eq("id", prof.id);
+      if (upErr) throw upErr;
+      const { data: link, error: lErr } = await admin.auth.admin.generateLink({ type: "magiclink", email });
+      if (lErr) throw lErr;
+      return json({ ok: true, token_hash: link.properties.hashed_token, email });
     }
 
     if (action === "delete") {
