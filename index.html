@@ -457,6 +457,22 @@
     #u-filters { justify-content: center; width: 100%; }
   }
 
+
+  /* ---------- One row of square buttons under search ---------- */
+  .toolbar.sqrow { display: flex !important; flex-wrap: nowrap; gap: 8px; align-items: center; }
+  .sqrow #u-filters { display: flex !important; gap: 8px; width: auto; }
+  .sq-btn {
+    width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; flex-shrink: 0;
+    background: var(--ink); color: var(--paper); border: 1.5px solid var(--ink); border-radius: var(--radius); cursor: pointer;
+  }
+  .sq-btn .emo { font-size: 20px; line-height: 1; }
+  .sq-btn:focus-visible, .chip.icon:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .sq-btn[hidden] { display: none !important; }
+  @media (max-width: 820px) {
+    .toolbar.sqrow { justify-content: center; }
+    .sqrow #u-filters { width: auto; justify-content: center; }
+  }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -642,7 +658,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.10 — филтри с емоджи</div>
+      <div class="version">v0.11 — бутони в един ред</div>
     </div>
   </aside>
 
@@ -672,10 +688,10 @@
       <header><h1>Потребители</h1></header>
       <div class="toolbar">
         <input class="input search" id="u-search" type="search" placeholder="Търсене по име, имейл или телефон" autocomplete="off" aria-label="Търсене">
-        <button class="btn inline" id="u-add" hidden>+ Добави потребител</button>
       </div>
-      <div class="toolbar">
-        <div class="chips" id="u-filters" role="tablist" aria-label="Филтър по статус">
+      <div class="toolbar sqrow">
+        <button class="sq-btn" id="u-add" title="Добави потребител" aria-label="Добави потребител" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <div class="chips" id="u-filters" role="group" aria-label="Филтър по статус">
           <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true">⚪</span><span class="n"></span></button>
           <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true">🟢</span><span class="n"></span></button>
           <button class="chip icon" data-f="pending" title="Чакащи одобрение" aria-label="Чакащи одобрение" aria-pressed="false"><span class="emo" aria-hidden="true">🟡</span><span class="n"></span></button>
