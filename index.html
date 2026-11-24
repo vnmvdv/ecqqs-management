@@ -383,6 +383,35 @@
   #menu-backdrop[hidden] { display: none; }
   @media (prefers-reduced-motion: reduce) { #view-app aside { transition: none; } }
 
+
+  /* ---------- Profile button + panel ---------- */
+  .me-btn {
+    justify-self: end; width: 34px; height: 34px; border-radius: 50%;
+    background: var(--ink); color: var(--paper); border: none; cursor: pointer; position: relative;
+    font-weight: 600; font-size: 12.5px; letter-spacing: .02em; display: inline-grid; place-items: center;
+  }
+  .me-btn::after { content: ""; position: absolute; inset: -6px; }
+  .me-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .me .who { background: none; border: none; cursor: pointer; padding: 6px; margin: -6px; border-radius: var(--radius); width: calc(100% + 12px); }
+  .me .who:hover { background: var(--rule); }
+  .pf-head { display: flex; gap: 14px; align-items: center; margin-bottom: 18px; padding-right: 36px; }
+  .pf-avatar { width: 52px; height: 52px; font-size: 18px; }
+  .pf-head h2 { margin: 0; font-size: 22px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-sub { color: var(--muted); font-size: 13px; margin-top: 3px; overflow-wrap: anywhere; }
+  .pf-menu { display: grid; gap: 8px; }
+  .pf-item {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; text-align: left; width: 100%;
+    background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius);
+    padding: 12px 14px; min-height: 56px; cursor: pointer; column-gap: 10px;
+  }
+  .pf-item::after { content: "›"; grid-row: 1 / span 2; grid-column: 2; font-size: 22px; color: var(--muted); }
+  .pf-item span { font-weight: 600; font-size: 15px; }
+  .pf-item small { color: var(--muted); font-size: 12.5px; grid-column: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pf-item:hover { border-color: var(--ink); }
+  .pf-pane h3 { font-family: 'Playfair Display', Georgia, serif; font-size: 20px; margin-bottom: 12px; }
+  .pf-dl { display: grid; grid-template-columns: 130px 1fr; gap: 8px 12px; font-size: 14px; margin-bottom: 14px; }
+  .pf-dl dt { color: var(--muted); }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -552,7 +581,7 @@
       <span class="dot" id="menu-dot" hidden></span>
     </button>
     <div class="tb-brand">EverClean QQS<small>Система за управление</small></div>
-    <span class="tb-spacer" aria-hidden="true"></span>
+    <button class="me-btn" id="me-btn" aria-haspopup="dialog" aria-label="Моят профил">?</button>
   </div>
   <div id="menu-backdrop" hidden></div>
   <aside id="app-menu" aria-label="Меню">
@@ -560,15 +589,15 @@
     <div class="brand">EverClean QQS<small>Система за управление</small></div>
     <nav id="nav" aria-label="Раздели"></nav>
     <div class="me">
-      <div class="who">
+      <button class="who" id="me-open" aria-haspopup="dialog" title="Моят профил">
         <div class="avatar" id="me-avatar">?</div>
-        <div style="min-width:0">
+        <div style="min-width:0;text-align:left">
           <div class="name" id="me-name">—</div>
           <div class="role" id="me-role">—</div>
         </div>
-      </div>
+      </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.7 — мобилно меню вляво</div>
+      <div class="version">v0.8 — моят профил</div>
     </div>
   </aside>
 
@@ -683,6 +712,99 @@
         <button class="btn ghost-danger" id="e-delete"><span class="label">Изтрий</span></button>
       </div>
       <p class="note">„Линк за парола“ създава нов линк, с който човекът задава (нова) парола — полезно, ако не е получил поканата или я е забравил.</p>
+    </div>
+  </div>
+</dialog>
+
+<!-- My profile -->
+<dialog class="sheet" id="dlg-profile" aria-labelledby="pf-name">
+  <div class="sheet-inner">
+    <button class="x" data-close aria-label="Затвори">×</button>
+    <div class="pf-head">
+      <div class="avatar pf-avatar" id="pf-avatar">?</div>
+      <div style="min-width:0">
+        <h2 id="pf-name">—</h2>
+        <div class="pf-sub" id="pf-sub">—</div>
+      </div>
+    </div>
+    <div id="pf-alert" role="alert"></div>
+
+    <div class="pf-menu" id="pf-menu">
+      <button class="pf-item" data-pane="details"><span>Лични данни</span><small>Име и телефон</small></button>
+      <button class="pf-item" data-pane="password"><span>Смяна на парола</span><small>Изисква текущата парола</small></button>
+      <button class="pf-item" data-pane="email"><span>Смяна на имейл</span><small id="pf-email-now">—</small></button>
+      <button class="pf-item" data-pane="devices"><span>Устройства и сесии</span><small id="pf-remember">—</small></button>
+      <div class="actions"><button class="btn secondary" id="pf-logout"><span class="label">Изход</span></button></div>
+    </div>
+
+    <!-- Details -->
+    <form class="pf-pane" id="pane-details" hidden novalidate>
+      <button type="button" class="link back" data-back><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>Назад</button>
+      <h3>Лични данни</h3>
+      <div class="two">
+        <div class="field"><label for="pf-fname">Име</label><input class="input" id="pf-fname" autocomplete="given-name"></div>
+        <div class="field"><label for="pf-lname">Фамилия</label><input class="input" id="pf-lname" autocomplete="family-name"></div>
+      </div>
+      <div class="field"><label for="pf-phone">Телефон</label><input class="input" id="pf-phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+359…"></div>
+      <div class="actions"><button class="btn" type="submit" id="pf-details-btn"><span class="label">Запази</span></button></div>
+    </form>
+
+    <!-- Password -->
+    <form class="pf-pane" id="pane-password" hidden novalidate>
+      <button type="button" class="link back" data-back><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>Назад</button>
+      <h3>Смяна на парола</h3>
+      <input type="email" id="pf-pw-user" autocomplete="username" class="sr-only" tabindex="-1" aria-hidden="true">
+      <div class="field">
+        <label for="pf-pw-cur">Текуща парола</label>
+        <div class="input-wrap">
+          <input class="input has-toggle" id="pf-pw-cur" type="password" autocomplete="current-password" autocapitalize="none" spellcheck="false">
+          <button type="button" class="toggle-pw" data-target="pf-pw-cur" aria-label="Покажи паролата" aria-pressed="false"></button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="pf-pw-new">Нова парола</label>
+        <div class="input-wrap">
+          <input class="input has-toggle" id="pf-pw-new" type="password" autocomplete="new-password" autocapitalize="none" spellcheck="false">
+          <button type="button" class="toggle-pw" data-target="pf-pw-new" aria-label="Покажи паролата" aria-pressed="false"></button>
+        </div>
+        <div class="hint caps" data-caps-for="pf-pw-new" hidden>⇪ Caps Lock е включен</div>
+        <div class="meter" id="pf-meter" data-score="0" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+        <ul class="rules" id="pf-rules">
+          <li data-rule="len">Поне 8 символа</li>
+          <li data-rule="case">Малки и главни букви</li>
+          <li data-rule="num">Поне една цифра</li>
+        </ul>
+      </div>
+      <div class="field">
+        <label for="pf-pw-confirm">Повторете новата парола</label>
+        <div class="input-wrap">
+          <input class="input has-toggle" id="pf-pw-confirm" type="password" autocomplete="new-password" autocapitalize="none" spellcheck="false">
+          <button type="button" class="toggle-pw" data-target="pf-pw-confirm" aria-label="Покажи паролата" aria-pressed="false"></button>
+        </div>
+      </div>
+      <div class="actions"><button class="btn" type="submit" id="pf-pw-btn"><span class="label">Смени паролата</span></button></div>
+      <p class="note">Забравили сте текущата? Излезте и използвайте „Забравена парола?“ на екрана за вход.</p>
+    </form>
+
+    <!-- Email -->
+    <form class="pf-pane" id="pane-email" hidden novalidate>
+      <button type="button" class="link back" data-back><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>Назад</button>
+      <h3>Смяна на имейл</h3>
+      <p class="lead">Ще изпратим линк за потвърждение. Имейлът се сменя едва след като го потвърдите.</p>
+      <div class="field"><label for="pf-email-new">Нов имейл</label><input class="input" id="pf-email-new" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false"></div>
+      <div class="actions"><button class="btn" type="submit" id="pf-email-btn"><span class="label">Изпрати потвърждение</span></button></div>
+    </form>
+
+    <!-- Devices -->
+    <div class="pf-pane" id="pane-devices" hidden>
+      <button type="button" class="link back" data-back><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>Назад</button>
+      <h3>Устройства и сесии</h3>
+      <dl class="pf-dl">
+        <dt>Това устройство</dt><dd id="pf-dev-remember">—</dd>
+        <dt>Последен вход</dt><dd id="pf-dev-last">—</dd>
+      </dl>
+      <p class="lead">Ако сте влизали на чужд телефон или компютър, можете да излезете навсякъде наведнъж.</p>
+      <div class="actions"><button class="btn ghost-danger" id="pf-global"><span class="label">Изход от всички устройства</span></button></div>
     </div>
   </div>
 </dialog>
@@ -1058,6 +1180,8 @@ function renderMe(user) {
   $('acc-role').textContent = role;
   $('acc-remember').textContent = rememberOn() ? 'Да — на това устройство' : 'Не — до затваряне на браузъра';
   $('acc-last').textContent = user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString('bg-BG') : '—';
+  $('me-btn').textContent = initials({ ...(me || {}), email: user.email });
+  $('me-btn').setAttribute('aria-label', `Моят профил — ${full}`);
 }
 
 let currentUser = null;
@@ -1310,6 +1434,117 @@ $('e-delete').addEventListener('click', async () => {
 });
 $('dlg-edit').addEventListener('close', resetDelete);
 
+
+/* ---------- My profile ---------- */
+function pfShow(pane) {
+  $('pf-menu').hidden = !!pane;
+  document.querySelectorAll('.pf-pane').forEach((p) => { p.hidden = p.id !== 'pane-' + pane; });
+  setAlert('pf-alert');
+  const first = pane && $('pane-' + pane).querySelector('input:not(.sr-only)');
+  if (first && window.matchMedia('(hover: hover)').matches) requestAnimationFrame(() => first.focus());
+}
+function openProfile() {
+  if (!currentUser) return;
+  setMenu(false);
+  const full = fullName(me || {}) || currentUser.email;
+  $('pf-avatar').textContent = initials({ ...(me || {}), email: currentUser.email });
+  $('pf-name').textContent = full;
+  $('pf-sub').textContent = `${ROLE_LABELS[me?.role] || '—'} · ${currentUser.email}`;
+  $('pf-email-now').textContent = currentUser.email;
+  const rem = rememberOn() ? 'Запомнен на това устройство' : 'Само до затваряне на браузъра';
+  $('pf-remember').textContent = rem;
+  $('pf-dev-remember').textContent = rem;
+  $('pf-dev-last').textContent = currentUser.last_sign_in_at ? new Date(currentUser.last_sign_in_at).toLocaleString('bg-BG') : '—';
+  $('pf-fname').value = me?.fname || ''; $('pf-lname').value = me?.lname || ''; $('pf-phone').value = me?.phone || '';
+  ['pf-pw-cur', 'pf-pw-new', 'pf-pw-confirm', 'pf-email-new'].forEach((id) => { $(id).value = ''; });
+  $('pf-pw-user').value = currentUser.email;
+  $('pf-meter').dataset.score = 0;
+  document.querySelectorAll('#pf-rules li').forEach((li) => li.classList.remove('ok'));
+  pfShow(null);
+  $('dlg-profile').showModal();
+}
+$('me-btn').addEventListener('click', openProfile);
+$('me-open').addEventListener('click', openProfile);
+document.querySelectorAll('.pf-item').forEach((b) => b.addEventListener('click', () => pfShow(b.dataset.pane)));
+document.querySelectorAll('#dlg-profile [data-back]').forEach((b) => b.addEventListener('click', () => pfShow(null)));
+
+$('pane-details').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const patch = { fname: $('pf-fname').value.trim() || null, lname: $('pf-lname').value.trim() || null, phone: $('pf-phone').value.trim() || null };
+  const btn = $('pf-details-btn'); busy(btn, true, 'Запазване…');
+  const { error } = await supabase.from('profiles').update(patch).eq('id', currentUserId);
+  busy(btn, false);
+  if (error) return setAlert('pf-alert', 'error', error.code === 'P0001' ? error.message : authMessage(error));
+  Object.assign(me, patch); renderMe(currentUser);
+  const u = users.find((x) => x.id === currentUserId); if (u) { Object.assign(u, patch); renderUsers(); }
+  $('dlg-profile').close(); toast('Данните са запазени.');
+});
+
+$('pf-pw-new').addEventListener('input', () => {
+  const { rules, score } = scorePassword($('pf-pw-new').value);
+  $('pf-meter').dataset.score = score;
+  document.querySelectorAll('#pf-rules li').forEach((li) => li.classList.toggle('ok', rules[li.dataset.rule]));
+});
+$('pane-password').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const cur = $('pf-pw-cur').value, pw = $('pf-pw-new').value, conf = $('pf-pw-confirm').value;
+  if (!cur) { setAlert('pf-alert', 'error', 'Въведете текущата си парола.'); return $('pf-pw-cur').focus(); }
+  const { rules } = scorePassword(pw);
+  if (!rules.len || !rules.case || !rules.num) { setAlert('pf-alert', 'error', 'Новата парола трябва да отговаря на всички изисквания.'); return $('pf-pw-new').focus(); }
+  if (pw !== conf) { setAlert('pf-alert', 'error', 'Новите пароли не съвпадат.'); return $('pf-pw-confirm').focus(); }
+  if (pw === cur) { setAlert('pf-alert', 'error', 'Новата парола трябва да е различна от текущата.'); return; }
+  const btn = $('pf-pw-btn'); busy(btn, true, 'Проверка…'); setAlert('pf-alert');
+  try {
+    // confirm it's really you before changing the password
+    const { error: vErr } = await supabase.auth.signInWithPassword({ email: currentUser.email, password: cur });
+    if (vErr) { setAlert('pf-alert', 'error', /invalid/i.test(vErr.message || '') ? 'Текущата парола е грешна.' : authMessage(vErr)); return; }
+    const { error } = await supabase.auth.updateUser({ password: pw });
+    if (error) { setAlert('pf-alert', 'error', authMessage(error)); return; }
+    try {
+      if (rememberOn() && 'PasswordCredential' in window && navigator.credentials?.store) {
+        await navigator.credentials.store(new PasswordCredential({ id: currentUser.email, password: pw, name: currentUser.email }));
+      }
+    } catch {}
+    $('dlg-profile').close(); toast('Паролата е сменена.');
+  } finally { busy(btn, false); }
+});
+
+$('pane-email').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = $('pf-email-new').value.trim().toLowerCase();
+  if (!validEmail(email)) { setAlert('pf-alert', 'error', 'Въведете валиден имейл.'); return $('pf-email-new').focus(); }
+  if (email === currentUser.email) { setAlert('pf-alert', 'error', 'Това вече е вашият имейл.'); return; }
+  const btn = $('pf-email-btn'); busy(btn, true, 'Изпращане…');
+  const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: location.origin + '/' });
+  busy(btn, false);
+  if (error) {
+    const msg = /already|registered|exists/i.test(error.message || '') ? 'Този имейл вече се използва от друг акаунт.' : authMessage(error);
+    return setAlert('pf-alert', 'error', msg);
+  }
+  setAlert('pf-alert', 'success', `Изпратихме линк до ${email}. Възможно е да получите линк и на сегашния си имейл (${currentUser.email}) — потвърдете и двата. Дотогава влизате със стария имейл.`);
+  $('pf-email-new').value = '';
+});
+
+$('pf-global').addEventListener('click', async () => {
+  const btn = $('pf-global');
+  if (btn.dataset.armed !== '1') {
+    btn.dataset.armed = '1'; btn.className = 'btn danger'; btn.querySelector('.label').textContent = 'Потвърди — изход навсякъде';
+    return;
+  }
+  busy(btn, true, 'Излизане…');
+  try { await supabase.auth.signOut({ scope: 'global' }); } catch {}
+  authStorage.removeItem(STORAGE_KEY);
+  busy(btn, false);
+  btn.dataset.armed = ''; btn.className = 'btn ghost-danger'; btn.querySelector('.label').textContent = 'Изход от всички устройства';
+  $('dlg-profile').close();
+  currentUserId = null; me = null; users = []; currentUser = null;
+  show('view-login'); toast('Излязохте от всички устройства.');
+});
+$('dlg-profile').addEventListener('close', () => {
+  const b = $('pf-global'); b.dataset.armed = ''; b.className = 'btn ghost-danger'; b.querySelector('.label').textContent = 'Изход от всички устройства';
+});
+$('pf-logout').addEventListener('click', () => { $('dlg-profile').close(); $('logout-btn').click(); });
+
 /* ---------- Boot ---------- */
 const hash = new URLSearchParams(location.hash.slice(1));
 const linkType = hash.get('type');
@@ -1325,6 +1560,10 @@ function openSetPassword(session) {
     : `Изберете нова парола за ${email || 'акаунта си'}.`;
   show('view-reset');
 }
+
+// Email-change confirmation links
+if (linkType === 'email_change') setTimeout(() => toast('Имейлът е потвърден и сменен.'), 1200);
+else if (hash.get('message')) setTimeout(() => toast('Първото потвърждение е прието — потвърдете и линка в другия имейл.'), 1200);
 
 // Expired / invalid reset link
 if (hash.get('error')) {
@@ -1344,6 +1583,7 @@ supabase.auth.onAuthStateChange((event, session) => {
       return openSetPassword(session);
     }
     if (recovering) { if (session && $('view-reset').hidden) openSetPassword(session); return; }
+    if (event === 'USER_UPDATED' && session && currentUserId) { currentUser = session.user; renderMe(currentUser); return; }
     if (event === 'SIGNED_OUT') { currentUserId = null; if ($('view-forgot').hidden) show('view-login'); return; }
     if (event === 'INITIAL_SESSION') {
       if (session) await enterApp(session);
