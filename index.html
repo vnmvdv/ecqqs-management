@@ -534,6 +534,14 @@
   textarea.input { min-height: 84px; resize: vertical; line-height: 1.45; font-family: inherit; }
   .input:disabled { opacity: .75; }
 
+
+  /* ---------- Own file (cleaners) ---------- */
+  .self-head { display: flex; gap: 14px; align-items: center; min-height: 0; margin-bottom: 16px; }
+  .self-name { font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 22px; }
+  .self-grid { margin-bottom: 4px; }
+  .muted { color: var(--muted); }
+  @media (min-width: 821px) { .self-grid { grid-template-columns: 1fr 1fr; } }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -726,7 +734,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.13 — персонал</div>
+      <div class="version">v0.14 — моето досие</div>
     </div>
   </aside>
 
@@ -771,7 +779,9 @@
 
     <!-- Staff -->
     <section class="sec" id="sec-staff" hidden>
-      <header><h1>Персонал</h1></header>
+      <header><h1 id="s-title">Персонал</h1></header>
+      <div id="s-self" hidden></div>
+      <div id="s-team">
       <div class="toolbar">
         <input class="input search" id="s-search" type="search" placeholder="Търсене по име, телефон или район" autocomplete="off" aria-label="Търсене">
       </div>
@@ -786,6 +796,7 @@
         </div>
       </div>
       <div class="ulist" id="s-list" aria-live="polite"></div>
+      </div>
     </section>
   </main>
 </div>
@@ -1329,7 +1340,7 @@ let me = null;            // own profile
 let users = [];           // loaded profiles
 const SECTIONS = [
   { id: 'dashboard', label: 'Табло', roles: null },
-  { id: 'staff', label: 'Персонал', roles: ['owner', 'manager', 'cleaner'] },
+  { id: 'staff', label: 'Персонал', labelFor: { cleaner: 'Моето досие' }, roles: ['owner', 'manager', 'cleaner'] },
   { id: 'users', label: 'Потребители', roles: ['owner', 'manager'] },
 ];
 const SECTION_KEY = 'ecqqs-section';
@@ -1343,7 +1354,8 @@ function buildNav() {
   SECTIONS.filter((s) => !s.roles || s.roles.includes(me?.role)).forEach((s) => {
     const b = document.createElement('button');
     b.dataset.section = s.id;
-    b.innerHTML = `${esc(s.label)}<span class="navcount" hidden></span>`;
+    const label = (s.labelFor && s.labelFor[me?.role]) || s.label;
+    b.innerHTML = `${esc(label)}<span class="navcount" hidden></span>`;
     b.addEventListener('click', () => go(s.id));
     nav.appendChild(b);
   });
@@ -1704,6 +1716,7 @@ $('pane-details').addEventListener('submit', async (e) => {
   if (error) return setAlert('pf-alert', 'error', error.code === 'P0001' ? error.message : authMessage(error));
   Object.assign(me, patch); renderMe(currentUser);
   const u = users.find((x) => x.id === currentUserId); if (u) { Object.assign(u, patch); renderUsers(); }
+  if (!$('s-self').hidden && !$('sec-staff').hidden) loadOwnFile();
   $('dlg-profile').close(); toast('Данните са запазени.');
 });
 
@@ -1783,6 +1796,11 @@ const canManageStaff = () => ['owner', 'manager'].includes(me?.role) && me?.stat
 const canEditStaff = (p) => isOwner() || (me?.role === 'manager' && p.role !== 'owner');
 
 async function loadStaff() {
+  const selfOnly = !canManageStaff();
+  $('s-title').textContent = selfOnly ? 'Моето досие' : 'Персонал';
+  $('s-team').hidden = selfOnly;
+  $('s-self').hidden = !selfOnly;
+  if (selfOnly) return loadOwnFile();
   if (!staff.length) $('s-list').innerHTML = '<div class="empty">Зареждане…</div>';
   $('s-add').hidden = !canManageStaff();
   const [{ data: profs, error }, { data: details }] = await Promise.all([
@@ -1879,6 +1897,34 @@ $('sf-form').addEventListener('submit', async (e) => {
   $('dlg-staff').close(); toast('Досието е запазено.');
   loadStaff();
 });
+
+
+/* Cleaner's own file (read-only) */
+async function loadOwnFile() {
+  const box = $('s-self');
+  box.innerHTML = '<div class="empty">Зареждане…</div>';
+  const { data: d } = await supabase.from('staff_details')
+    .select('address,district,emergency_name,emergency_relation,emergency_phone,updated_at').eq('id', currentUserId).maybeSingle();
+  const det = d || {};
+  const row = (label, value) => `<dt>${esc(label)}</dt><dd>${value ? esc(value) : '<span class="muted">—</span>'}</dd>`;
+  const full = fullName(me || {}) || currentUser.email;
+  box.innerHTML = `
+    <div class="self-head card">
+      <div class="avatar pf-avatar">${esc(initials({ ...(me || {}), email: currentUser.email }))}</div>
+      <div style="min-width:0">
+        <div class="self-name">${esc(full)}</div>
+        <div class="pf-sub">${esc(ROLE_LABELS[me?.role] || '')}</div>
+      </div>
+    </div>
+    <div class="grid self-grid">
+      <div class="card"><h2>Контакт</h2><dl>${row('Телефон', me?.phone)}${row('Имейл', currentUser.email)}</dl></div>
+      <div class="card"><h2>Адрес</h2><dl>${row('Адрес', det.address)}${row('Район', det.district)}</dl></div>
+      <div class="card"><h2>Спешен контакт</h2><dl>${row('Име', det.emergency_name)}${row('Връзка', det.emergency_relation)}${row('Телефон', det.emergency_phone)}</dl></div>
+    </div>
+    <div class="actions"><button class="btn secondary" type="button" id="self-edit">Промени име и телефон</button></div>
+    <p class="note">Адресът и спешният контакт се попълват от мениджър. Ако нещо не е вярно, свържете се с него.</p>`;
+  $('self-edit').addEventListener('click', () => { openProfile(); pfShow('details'); });
+}
 
 /* ---------- Dev: switch role (owners only) ---------- */
 const DEV_RETURN_KEY = 'ecqqs-dev-return';
