@@ -1,5 +1,5 @@
-// Owner-only user administration for EverClean QQS management.
-// Actions: invite (email or shareable link), link (new password-setup link), delete.
+// User administration for EverClean QQS management.
+// Owners: invite, link, delete, dev_switch. Managers: invite cleaners, password links for cleaners.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const APP_URL = "https://ecqqs-management.netlify.app/";
@@ -29,11 +29,26 @@ Deno.serve(async (req) => {
   const { data: who, error: whoErr } = await admin.auth.getUser(token);
   if (whoErr || !who?.user) return fail("Не сте влезли в системата.", 401);
   const { data: me } = await admin.from("profiles").select("role,status,is_dev").eq("id", who.user.id).maybeSingle();
-  if (!me || me.role !== "owner" || me.status !== "active" || me.is_dev) return fail("Само собственик може да управлява потребители.", 403);
+  const active = !!me && me.status === "active" && !me.is_dev;
+  const isOwner = active && me!.role === "owner";
+  const isManager = active && me!.role === "manager";
+  if (!isOwner && !isManager) return fail("Нямате права за това действие.", 403);
 
   let body: Record<string, unknown>;
   try { body = await req.json(); } catch { return fail("Невалидна заявка."); }
   const action = String(body.action || "");
+
+  // Managers may only invite cleaners and make password links for cleaners
+  if (isManager) {
+    if (action === "invite") {
+      if (String(body.role || "") !== "cleaner") return fail("Мениджърите могат да добавят само хигиенисти.", 403);
+    } else if (action === "link") {
+      const { data: t } = await admin.from("profiles").select("role").eq("id", String(body.user_id || "")).maybeSingle();
+      if (t?.role !== "cleaner") return fail("Мениджърите могат да създават линкове само за хигиенисти.", 403);
+    } else {
+      return fail("Само собственик може да прави това.", 403);
+    }
+  }
 
   try {
     if (action === "invite") {

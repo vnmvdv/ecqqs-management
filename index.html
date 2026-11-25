@@ -455,13 +455,13 @@
   .chip.icon.active { background: color-mix(in srgb, var(--accent) 16%, var(--card)); border: 2px solid var(--accent); }
   .chip.icon.active .n { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
   @media (max-width: 820px) {
-    #u-filters { justify-content: center; width: 100%; }
+
   }
 
 
   /* ---------- One row of square buttons under search ---------- */
   .toolbar.sqrow { display: flex !important; flex-wrap: nowrap; gap: 8px; align-items: center; }
-  .sqrow #u-filters { display: flex !important; gap: 8px; width: auto; }
+  .sqrow .chips { display: flex !important; gap: 8px; width: auto; }
   .sq-btn {
     width: 44px; height: 44px; padding: 0; display: inline-grid; place-items: center; flex-shrink: 0;
     background: var(--card); color: var(--ink); border: 1.5px solid var(--rule); border-radius: var(--radius); cursor: pointer;
@@ -472,7 +472,7 @@
   .sq-btn[hidden] { display: none !important; }
   @media (max-width: 820px) {
     .toolbar.sqrow { justify-content: center; }
-    .sqrow #u-filters { width: auto; justify-content: center; }
+    .sqrow .chips { width: auto; justify-content: center; }
   }
 
 
@@ -523,6 +523,16 @@
   .tb-dev:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
   .topbar .menu-btn .dot { top: 2px; right: 2px; width: 7px; height: 7px; }
   @media (max-width: 820px) { .dev-fab { display: none !important; } }
+
+
+  /* ---------- Staff ---------- */
+  .sf-quick { display: flex; gap: 8px; margin: -4px 0 16px; }
+  .sf-quick a { text-decoration: none; }
+  .sf-quick .sq-btn.off { opacity: .35; pointer-events: none; }
+  .sf-group { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 18px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--rule); }
+  #sf-form .sf-group:first-child { margin-top: 0; }
+  textarea.input { min-height: 84px; resize: vertical; line-height: 1.45; font-family: inherit; }
+  .input:disabled { opacity: .75; }
 
   /* ---------- Toast ---------- */
   #toast {
@@ -716,7 +726,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.12 — тест на роли</div>
+      <div class="version">v0.13 — персонал</div>
     </div>
   </aside>
 
@@ -757,6 +767,25 @@
         </div>
       </div>
       <div class="ulist" id="u-list" aria-live="polite"></div>
+    </section>
+
+    <!-- Staff -->
+    <section class="sec" id="sec-staff" hidden>
+      <header><h1>Персонал</h1></header>
+      <div class="toolbar">
+        <input class="input search" id="s-search" type="search" placeholder="Търсене по име, телефон или район" autocomplete="off" aria-label="Търсене">
+      </div>
+      <div class="toolbar sqrow">
+        <button class="sq-btn" id="s-add" title="Добави служител" aria-label="Добави служител" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <div class="chips" id="s-filters" role="group" aria-label="Филтър по роля">
+          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true">⚪</span><span class="n"></span></button>
+          <button class="chip icon" data-f="owner" title="Собственици" aria-label="Собственици" aria-pressed="false"><span class="emo" aria-hidden="true">👑</span><span class="n"></span></button>
+          <button class="chip icon" data-f="manager" title="Мениджъри" aria-label="Мениджъри" aria-pressed="false"><span class="emo" aria-hidden="true">🧭</span><span class="n"></span></button>
+          <button class="chip icon" data-f="cleaner" title="Хигиенисти" aria-label="Хигиенисти" aria-pressed="false"><span class="emo" aria-hidden="true">🧹</span><span class="n"></span></button>
+          <button class="chip icon" data-f="accountant" title="Счетоводители" aria-label="Счетоводители" aria-pressed="false"><span class="emo" aria-hidden="true">📊</span><span class="n"></span></button>
+        </div>
+      </div>
+      <div class="ulist" id="s-list" aria-live="polite"></div>
     </section>
   </main>
 </div>
@@ -834,6 +863,53 @@
     </div>
   </div>
 </dialog>
+
+<!-- Staff file -->
+<dialog class="sheet" id="dlg-staff" aria-labelledby="sf-name">
+  <div class="sheet-inner">
+    <button class="x" data-close aria-label="Затвори">×</button>
+    <div class="pf-head">
+      <div class="avatar pf-avatar" id="sf-avatar">?</div>
+      <div style="min-width:0">
+        <h2 id="sf-name">—</h2>
+        <div class="pf-sub" id="sf-sub">—</div>
+      </div>
+    </div>
+    <div class="sf-quick" id="sf-quick"></div>
+    <div id="sf-alert" role="alert"></div>
+    <form id="sf-form" novalidate>
+      <div class="sf-group">Контакт</div>
+      <div class="two">
+        <div class="field"><label for="sf-fname">Име</label><input class="input" id="sf-fname" autocomplete="off"></div>
+        <div class="field"><label for="sf-lname">Фамилия</label><input class="input" id="sf-lname" autocomplete="off"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label for="sf-phone">Телефон</label><input class="input" id="sf-phone" type="tel" inputmode="tel" autocomplete="off" placeholder="+359…"></div>
+        <div class="field"><label for="sf-email">Имейл</label><input class="input" id="sf-email" type="email" disabled></div>
+      </div>
+      <div class="sf-group">Адрес</div>
+      <div class="field"><label for="sf-address">Адрес</label><input class="input" id="sf-address" autocomplete="off" placeholder="ул., №, бл., вх., ет."></div>
+      <div class="field"><label for="sf-district">Район</label><input class="input" id="sf-district" list="sofia-districts" autocomplete="off" placeholder="напр. Младост"></div>
+      <div class="sf-group">Спешен контакт</div>
+      <div class="two">
+        <div class="field"><label for="sf-em-name">Име</label><input class="input" id="sf-em-name" autocomplete="off"></div>
+        <div class="field"><label for="sf-em-rel">Връзка</label><input class="input" id="sf-em-rel" autocomplete="off" placeholder="напр. съпруг/а, майка"></div>
+      </div>
+      <div class="field"><label for="sf-em-phone">Телефон за спешност</label><input class="input" id="sf-em-phone" type="tel" inputmode="tel" autocomplete="off"></div>
+      <div class="sf-group">Бележки</div>
+      <div class="field"><label for="sf-notes" class="sr-only">Бележки</label><textarea class="input" id="sf-notes" rows="3" placeholder="Вътрешни бележки"></textarea></div>
+      <div class="hint" id="sf-meta"></div>
+      <div class="actions" id="sf-actions"><button class="btn" type="submit" id="sf-save"><span class="label">Запази</span></button></div>
+    </form>
+  </div>
+</dialog>
+<datalist id="sofia-districts">
+  <option>Банкя</option><option>Витоша</option><option>Възраждане</option><option>Връбница</option><option>Изгрев</option>
+  <option>Илинден</option><option>Искър</option><option>Красна поляна</option><option>Красно село</option><option>Кремиковци</option>
+  <option>Лозенец</option><option>Люлин</option><option>Младост</option><option>Надежда</option><option>Нови Искър</option>
+  <option>Оборище</option><option>Овча купел</option><option>Панчарево</option><option>Подуяне</option><option>Сердика</option>
+  <option>Слатина</option><option>Средец</option><option>Студентски</option><option>Триадица</option>
+</datalist>
 
 <!-- My profile -->
 <dialog class="sheet" id="dlg-profile" aria-labelledby="pf-name">
@@ -1253,6 +1329,7 @@ let me = null;            // own profile
 let users = [];           // loaded profiles
 const SECTIONS = [
   { id: 'dashboard', label: 'Табло', roles: null },
+  { id: 'staff', label: 'Персонал', roles: ['owner', 'manager', 'cleaner'] },
   { id: 'users', label: 'Потребители', roles: ['owner', 'manager'] },
 ];
 const SECTION_KEY = 'ecqqs-section';
@@ -1305,6 +1382,7 @@ function go(id) {
   ls.set(SECTION_KEY, id);
   setMenu(false);
   if (id === 'users') loadUsers();
+  if (id === 'staff') loadStaff();
   window.scrollTo({ top: 0 });
 }
 
@@ -1373,7 +1451,7 @@ $('logout-btn').addEventListener('click', async () => {
 let uFilter = 'all';
 const STATUS_LABELS = { active: 'Активен', pending: 'Чака одобрение', disabled: 'Деактивиран' };
 // fill role selects
-['a-role', 'e-role'].forEach((id) => {
+['e-role'].forEach((id) => {
   Object.entries(ROLE_LABELS).forEach(([v, l]) => { const o = document.createElement('option'); o.value = v; o.textContent = l; $(id).appendChild(o); });
 });
 
@@ -1474,12 +1552,20 @@ document.addEventListener('click', async (e) => {
 });
 
 /* ---- Add ---- */
-$('u-add').addEventListener('click', () => {
+let afterAdd = () => {};
+function openAdd({ roles = Object.keys(ROLE_LABELS), preset = '', title = 'Нов потребител', onDone = () => {} } = {}) {
   $('add-form').reset(); setAlert('add-alert');
+  $('add-title').textContent = title;
+  const sel = $('a-role'); sel.innerHTML = roles.length > 1 ? '<option value="">Изберете…</option>' : '';
+  roles.forEach((r) => { const o = document.createElement('option'); o.value = r; o.textContent = ROLE_LABELS[r]; sel.appendChild(o); });
+  sel.value = preset || (roles.length === 1 ? roles[0] : '');
+  sel.disabled = roles.length === 1;
   $('add-form-wrap').hidden = false; $('add-share').hidden = true; $('add-share').innerHTML = '';
   ['a-fname', 'a-email', 'a-role'].forEach((id) => $(id).setAttribute('aria-invalid', 'false'));
+  afterAdd = onDone;
   $('dlg-add').showModal();
-});
+}
+$('u-add').addEventListener('click', () => openAdd({ onDone: loadUsers }));
 $('add-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const body = {
@@ -1505,7 +1591,7 @@ $('add-form').addEventListener('submit', async (e) => {
                 : `<div class="alert success">${ICONS.success}<span>Изпратихме покана на ${esc(body.email)}. Ако не я получи, отворете потребителя и натиснете „Линк за парола“.</span></div>`) +
       `<div class="actions"><button class="btn secondary" type="button" data-close>Готово</button></div>`;
     $('add-share').querySelector('[data-close]').addEventListener('click', () => $('dlg-add').close());
-    loadUsers();
+    afterAdd();
   } catch (err) {
     setAlert('add-alert', 'error', err.message);
   } finally { busy(btn, false); }
@@ -1686,6 +1772,113 @@ $('dlg-profile').addEventListener('close', () => {
 });
 $('pf-logout').addEventListener('click', () => { $('dlg-profile').close(); $('logout-btn').click(); });
 
+
+
+/* ---------- Staff section ---------- */
+const STAFF_ROLES = ['owner', 'manager', 'cleaner', 'accountant'];
+const ROLE_ORDER = { owner: 0, manager: 1, cleaner: 2, accountant: 3 };
+let staff = [];            // profiles + details
+let sFilter = 'all';
+const canManageStaff = () => ['owner', 'manager'].includes(me?.role) && me?.status === 'active';
+const canEditStaff = (p) => isOwner() || (me?.role === 'manager' && p.role !== 'owner');
+
+async function loadStaff() {
+  if (!staff.length) $('s-list').innerHTML = '<div class="empty">Зареждане…</div>';
+  $('s-add').hidden = !canManageStaff();
+  const [{ data: profs, error }, { data: details }] = await Promise.all([
+    supabase.from('profiles').select('id,email,fname,lname,phone,role,status').in('role', STAFF_ROLES).eq('is_dev', false),
+    supabase.from('staff_details').select('*'),
+  ]);
+  if (error) { $('s-list').innerHTML = `<div class="empty">Неуспешно зареждане. ${esc(authMessage(error))}</div>`; return; }
+  const byId = Object.fromEntries((details || []).map((d) => [d.id, d]));
+  staff = (profs || []).map((p) => ({ ...p, d: byId[p.id] || {} }));
+  renderStaff();
+}
+
+function renderStaff() {
+  const q = $('s-search').value.trim().toLowerCase();
+  const counts = { all: staff.length };
+  staff.forEach((p) => { counts[p.role] = (counts[p.role] || 0) + 1; });
+  document.querySelectorAll('#s-filters .chip').forEach((c) => { c.querySelector('.n').textContent = counts[c.dataset.f] || 0; });
+  const list = staff.filter((p) => (sFilter === 'all' || p.role === sFilter) &&
+    (!q || [fullName(p), p.email, p.phone, p.d.district, p.d.address, ROLE_LABELS[p.role]].some((v) => (v || '').toLowerCase().includes(q))));
+  list.sort((a, b) => ((a.status === 'disabled') - (b.status === 'disabled')) || (ROLE_ORDER[a.role] - ROLE_ORDER[b.role]) ||
+    (fullName(a) || a.email).localeCompare(fullName(b) || b.email, 'bg'));
+  if (!list.length) { $('s-list').innerHTML = `<div class="empty">${q || sFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма служители.'}</div>`; return; }
+  $('s-list').innerHTML = list.map((p) => `
+    <button class="urow" data-id="${p.id}">
+      <div class="avatar">${esc(initials(p))}</div>
+      <div style="min-width:0">
+        <div class="nm">${esc(fullName(p) || 'Без име')}</div>
+        <div class="sub">${esc(ROLE_LABELS[p.role])}${p.phone ? ' · ' + esc(p.phone) : ''}${p.d.district ? ' · ' + esc(p.d.district) : ''}</div>
+      </div>
+      <div class="tags">
+        ${p.id === currentUserId ? '<span class="badge you">Вие</span>' : ''}
+        ${p.status !== 'active' ? `<span class="badge ${p.status}">${esc(STATUS_LABELS[p.status])}</span>` : ''}
+      </div>
+    </button>`).join('');
+}
+$('s-list').addEventListener('click', (e) => { const row = e.target.closest('.urow'); if (row) openStaff(row.dataset.id); });
+$('s-search').addEventListener('input', renderStaff);
+document.querySelectorAll('#s-filters .chip').forEach((c) => c.addEventListener('click', () => {
+  sFilter = c.dataset.f;
+  document.querySelectorAll('#s-filters .chip').forEach((x) => { x.classList.toggle('active', x === c); x.setAttribute('aria-pressed', String(x === c)); });
+  renderStaff();
+}));
+$('s-add').addEventListener('click', () => openAdd({
+  roles: isOwner() ? STAFF_ROLES : ['cleaner'],
+  preset: isOwner() ? '' : 'cleaner',
+  title: 'Нов служител',
+  onDone: () => { loadStaff(); users = []; },
+}));
+
+const telHref = (n) => 'tel:' + String(n || '').replace(/[^\d+]/g, '');
+const viberHref = (n) => { let d = String(n || '').replace(/[^\d+]/g, ''); if (d.startsWith('0')) d = '+359' + d.slice(1); return 'viber://chat?number=' + encodeURIComponent(d); };
+
+let sEditing = null;
+function openStaff(id) {
+  sEditing = staff.find((p) => p.id === id); if (!sEditing) return;
+  const p = sEditing, d = p.d, edit = canEditStaff(p);
+  $('sf-avatar').textContent = initials(p);
+  $('sf-name').textContent = fullName(p) || 'Без име';
+  $('sf-sub').textContent = `${ROLE_LABELS[p.role]}${p.status !== 'active' ? ' · ' + STATUS_LABELS[p.status] : ''}`;
+  const has = !!p.phone;
+  $('sf-quick').innerHTML = `
+    <a class="sq-btn ${has ? '' : 'off'}" href="${has ? telHref(p.phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">📞</span></a>
+    <a class="sq-btn ${has ? '' : 'off'}" href="${has ? viberHref(p.phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">💬</span></a>
+    <a class="sq-btn" href="mailto:${esc(p.email)}" title="Имейл" aria-label="Имейл"><span class="emo">✉️</span></a>
+    ${d.emergency_phone ? `<a class="sq-btn" href="${telHref(d.emergency_phone)}" title="Спешен контакт" aria-label="Обаждане до спешен контакт"><span class="emo">🆘</span></a>` : ''}`;
+  $('sf-fname').value = p.fname || ''; $('sf-lname').value = p.lname || ''; $('sf-phone').value = p.phone || ''; $('sf-email').value = p.email;
+  $('sf-address').value = d.address || ''; $('sf-district').value = d.district || '';
+  $('sf-em-name').value = d.emergency_name || ''; $('sf-em-rel').value = d.emergency_relation || ''; $('sf-em-phone').value = d.emergency_phone || '';
+  $('sf-notes').value = d.notes || '';
+  ['sf-fname', 'sf-lname', 'sf-phone', 'sf-address', 'sf-district', 'sf-em-name', 'sf-em-rel', 'sf-em-phone', 'sf-notes'].forEach((x) => { $(x).disabled = !edit; });
+  $('sf-actions').hidden = !edit;
+  $('sf-meta').textContent = d.updated_at ? `Последна промяна: ${new Date(d.updated_at).toLocaleString('bg-BG')}` : '';
+  setAlert('sf-alert');
+  $('dlg-staff').showModal();
+}
+$('sf-form').addEventListener('submit', async (e) => {
+  e.preventDefault(); if (!sEditing) return;
+  const val = (id) => $(id).value.trim() || null;
+  const prof = { fname: val('sf-fname'), lname: val('sf-lname'), phone: val('sf-phone') };
+  const det = {
+    id: sEditing.id, address: val('sf-address'), district: val('sf-district'),
+    emergency_name: val('sf-em-name'), emergency_relation: val('sf-em-rel'), emergency_phone: val('sf-em-phone'), notes: val('sf-notes'),
+  };
+  const btn = $('sf-save'); busy(btn, true, 'Запазване…'); setAlert('sf-alert');
+  const [r1, r2] = await Promise.all([
+    supabase.from('profiles').update(prof).eq('id', sEditing.id),
+    supabase.from('staff_details').upsert(det),
+  ]);
+  busy(btn, false);
+  const err = r1.error || r2.error;
+  if (err) return setAlert('sf-alert', 'error', err.code === 'P0001' ? err.message : authMessage(err));
+  if (sEditing.id === currentUserId) { Object.assign(me, prof); renderMe(currentUser); }
+  users = [];
+  $('dlg-staff').close(); toast('Досието е запазено.');
+  loadStaff();
+});
 
 /* ---------- Dev: switch role (owners only) ---------- */
 const DEV_RETURN_KEY = 'ecqqs-dev-return';
