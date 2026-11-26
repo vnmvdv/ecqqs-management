@@ -3832,7 +3832,7 @@ async function openProperty(c, id) {
     root.querySelector('.sch-until').hidden = isOnce;
     root.querySelector('[data-k="sdlabel"]').textContent = isOnce ? 'Дата' : 'Започва на';
     const nNow = Math.max(1, Number(f.sch_interval.value) || 1);
-    [...f.sch_freq.options].forEach((o) => { o.textContent = UNIT_WORD[o.value][nNow === 1 ? 0 : 1]; });
+    [...f.sch_freq.options].forEach((o) => { if (UNIT_WORD[o.value]) o.textContent = UNIT_WORD[o.value][nNow === 1 ? 0 : 1]; });
     root.querySelectorAll('.sch-quick .opt').forEach((b) => b.classList.toggle('on', b.dataset.fq === f.sch_freq.value && Number(b.dataset.n) === nNow));
     const sumBox = root.querySelector('[data-k="schsum"]'), calBox = root.querySelector('[data-k="schcal"]');
     if (!x) { calBox.innerHTML = linked() && manage ? `<div class="alert info">${ICONS.info}<span>Графикът е изключен. При запазване бъдещите почиствания ще бъдат махнати от календара (минали остават).</span></div>` : ''; return; }
