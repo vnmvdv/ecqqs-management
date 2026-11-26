@@ -956,6 +956,15 @@
   dialog.sheet.confirm .actions { display: grid; grid-template-columns: 1fr 1fr; }
   .sf-quick .sq-del { margin-left: auto; color: var(--accent); border-color: var(--accent); }
   .sf-quick .sq-del:hover { background: var(--accent); color: #fff; }
+
+  /* property schedule */
+  .sch { border: 1px solid var(--ink); padding: 12px 14px 4px; margin: 6px 0 16px; background: #fff; }
+  .sch-sum { display: flex; gap: 8px; align-items: flex-start; font-family: var(--font-ui); font-size: 13px; line-height: 1.5; margin: 0 0 10px; }
+  .sch-sum .ic { margin-top: 2px; }
+  .sch-sum b { font-family: var(--font-mono); }
+  .sch-linked { display: flex; gap: 8px; align-items: center; font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--ok); margin-bottom: 6px; }
+  .sch-cal .actions { margin-top: 8px; }
+  .link .ic { width: 15px; height: 15px; }
 </style>
 </head>
 <body>
@@ -1110,7 +1119,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.20 — изтриване на клиенти</div>
+      <div class="version">v0.21 — график на обекти</div>
     </div>
   </aside>
 
@@ -1394,6 +1403,7 @@
     <div id="pr-root"></div>
   </div>
 </dialog>
+<datalist id="bg-cities"><option>София</option><option>Пловдив</option><option>Варна</option><option>Бургас</option><option>Русе</option><option>Стара Загора</option><option>Плевен</option><option>Банкя</option><option>Перник</option><option>Божурище</option><option>Костинброд</option><option>Самоков</option></datalist>
 <datalist id="cl-sources"><option>Препоръка</option><option>Google</option><option>Facebook</option><option>Instagram</option><option>Сайт evercleanqqs.com</option><option>Обаждане</option><option>Флаер</option></datalist>
 
 <!-- Staff file -->
@@ -2322,8 +2332,8 @@ function waitFor(cond, ms = 8000) {
 async function loadCalPeople() {
   if (!canManageCal()) { calPeople = []; calPeopleById = {}; return; }
   const { data } = await supabase.from('profiles').select('id,email,fname,lname,role,status,is_dev')
-    .in('role', ['owner', 'manager', 'cleaner']).neq('status', 'disabled');
-  const order = { cleaner: 0, manager: 1, owner: 2 };
+    .in('role', ['owner', 'manager', 'cleaner', 'accountant']).neq('status', 'disabled');
+  const order = { cleaner: 0, manager: 1, owner: 2, accountant: 3 };
   calPeople = (data || []).sort((a, b) => (a.is_dev - b.is_dev) || (order[a.role] - order[b.role]) || (fullName(a) || a.email).localeCompare(fullName(b) || b.email, 'bg'));
   calPeopleById = Object.fromEntries(calPeople.map((p) => [p.id, p]));
   const sel = $('cal-people'); const keep = sel.value || ls.get(CAL_PEOPLE_KEY) || 'all';
@@ -2596,10 +2606,21 @@ function openEventView(fcEvent) {
   $('ev-v-rep').hidden = !r.recurrence; $('ev-v-rep').innerHTML = r.recurrence ? ic('repeat') + ' ' + esc(recurrenceText(r)) : '';
   const ids = (r.event_assignees || []).map((a) => a.user_id);
   const rows = [];
+  if (r.property_id && canManageCal()) rows.push(['Обект', `<button type="button" class="link" data-act="open-prop" data-pid="${r.property_id}">${ic('office')} Отвори обекта</button>`, true]);
   if (ids.length) rows.push(['Хора', ids.map(personName).join(', ')]);
   if (r.location) rows.push(['Място', `<a href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(r.location)}" target="_blank" rel="noopener">${esc(r.location)} ↗</a>`, true]);
   if (r.description) rows.push(['Описание', r.description]);
   $('ev-v-dl').innerHTML = rows.map(([k, v, html]) => `<dt>${esc(k)}</dt><dd>${html ? v : esc(v)}</dd>`).join('');
+  $('ev-v-dl').querySelector('[data-act="open-prop"]')?.addEventListener('click', async (e) => {
+    const pid = e.currentTarget.dataset.pid;
+    const { data: pr } = await supabase.from('properties').select('client_id').eq('id', pid).maybeSingle();
+    if (!pr) return toast('Обектът не е намерен.');
+    const { data: cl } = await supabase.from('clients').select('*, properties(*)').eq('id', pr.client_id).maybeSingle();
+    if (!cl) return toast('Клиентът не е намерен.');
+    $('dlg-evview').close(); openProperty(cl, pid);
+  });
+  $('ev-v-rec-note')?.remove();
+  if (r.property_id && r.recurrence && canManageCal()) $('ev-v-dl').insertAdjacentHTML('afterend', '<p class="note" id="ev-v-rec-note">Това е графикът на обект. Часове, дни и хора се променят от обекта; тук можете да изтриете отделно почистване.</p>');
   const manage = canManageCal();
   $('ev-v-actions').hidden = !manage;
   $('ev-v-delrec').hidden = true;
@@ -2800,7 +2821,7 @@ const monthlyValue = (props) => (props || []).filter((p) => p.status === 'active
 async function loadClients() {
   $('c-add').hidden = !canManageClients();
   if (!clients.length) $('c-list').innerHTML = '<div class="empty">Зареждане…</div>';
-  const { data, error } = await supabase.from('clients').select('*, properties(id,name,status,price,price_model,address)').order('name');
+  const { data, error } = await supabase.from('clients').select('*, properties(id,name,status,price,price_model,address,neighbourhood,city,schedule_event_id)').order('name');
   if (error) { $('c-list').innerHTML = `<div class="empty">Неуспешно зареждане. ${esc(authMessage(error))}</div>`; return; }
   clients = data || [];
   renderClients();
@@ -2925,7 +2946,7 @@ function renderClientFile(root, c, manage, tab = 'sum') {
       <div class="ulist">${props.length ? props.slice().sort((a, b) => a.name.localeCompare(b.name, 'bg')).map((p) => `
         <button class="urow" type="button" data-prop="${p.id}">
           <div class="avatar emo-av">${(PR_KIND[p.kind] || PR_KIND.other)[0]}</div>
-          <div style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="sub">${esc(p.address || 'без адрес')}</div></div>
+          <div style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="sub">${esc([p.address, p.neighbourhood, p.city && p.city !== 'София' ? p.city : ''].filter(Boolean).join(', ') || 'без адрес')}${p.schedule_event_id ? ' · в календара' : ''}</div></div>
           <div class="tags">${p.price != null ? `<span class="badge">${eur(p.price)} ${PRICE_MODEL[p.price_model]}</span>` : ''}${p.status !== 'active' ? `<span class="badge pending">${esc(PR_STATUS[p.status])}</span>` : ''}</div>
         </button>`).join('') : '<div class="empty">Няма обекти.</div>'}</div>
     </div>
@@ -3028,23 +3049,111 @@ async function loadClientUsers(root, c) {
 
 /* --- property sheet --- */
 let prClient = null, prRow = null;
+const SCH_FREQ = { daily: 'Всеки ден', weekly: 'Всяка седмица', monthly: 'Всеки месец' };
+const WD_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
+const WD_SHORT = { mo: 'Пн', tu: 'Вт', we: 'Ср', th: 'Чт', fr: 'Пт', sa: 'Сб', su: 'Нд' };
+const STAFFABLE = ['owner', 'manager', 'cleaner', 'accountant'];
+const toMinT = (t) => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
+function schDurH(s) { let d = toMinT(s.end_time) - toMinT(s.start_time); if (d <= 0) d += 1440; return d / 60; }
+function schPerMonth(s) {
+  const iv = Math.max(1, Number(s.interval) || 1);
+  if (s.freq === 'daily') return 30.44 / iv;
+  if (s.freq === 'weekly') return (s.byweekday || []).length * 4.345 / iv;
+  return 1 / iv;
+}
+function schText(s) {
+  if (!s) return '';
+  const iv = Math.max(1, Number(s.interval) || 1);
+  const ord = iv === 1 ? '' : iv === 2 ? ' (през седмица)' : ` (на всеки ${iv})`;
+  let t;
+  if (s.freq === 'daily') t = iv === 1 ? 'Всеки ден' : `На всеки ${iv} дни`;
+  else if (s.freq === 'weekly') t = (s.byweekday || []).map((d) => WD_SHORT[d]).join(', ') + (iv === 1 ? ' всяка седмица' : ord);
+  else t = `Всеки${iv === 1 ? '' : ` ${iv}-ти`} месец на ${s.start_date ? fromLocal(s.start_date).getDate() : '?'}-о число`;
+  return `${t}, ${s.start_time}–${s.end_time}`;
+}
+function schEventPayload(s, prop, client) {
+  const start = fromLocal(s.start_date, s.start_time);
+  let end = fromLocal(s.start_date, s.end_time);
+  if (end <= start) end = addDays(end, 1);
+  const rec = { freq: s.freq, interval: Math.max(1, Number(s.interval) || 1) };
+  if (s.freq === 'weekly') rec.byweekday = s.byweekday;
+  if (s.until) rec.until = s.until;
+  const loc = [prop.address, prop.neighbourhood, prop.city].filter(Boolean).join(', ');
+  const desc = [prop.access_info ? 'Достъп: ' + prop.access_info : '', prop.protocol ? 'Протокол:\n' + prop.protocol : ''].filter(Boolean).join('\n\n');
+  return {
+    title: `Почистване — ${client.name}${prop.name ? ' · ' + prop.name : ''}`,
+    location: loc || null, description: desc || null, all_day: false, color: 'basil',
+    start_at: start.toISOString(), end_at: end.toISOString(), recurrence: rec, property_id: prop.id,
+  };
+}
+// Create / update the calendar series for a property's schedule. If the existing series has already
+// started and the rule, hours or people changed, the old series is ended yesterday (history stays) and a new one starts today.
+async function syncScheduleEvent(prop, client, s, staffIds, prev) {
+  const payload = schEventPayload(s, prop, client);
+  const setPeople = async (eid) => {
+    const { error: e1 } = await supabase.from('event_assignees').delete().eq('event_id', eid); if (e1) throw e1;
+    if (staffIds.length) { const { error: e2 } = await supabase.from('event_assignees').insert(staffIds.map((u) => ({ event_id: eid, user_id: u }))); if (e2) throw e2; }
+  };
+  let eid = prop.schedule_event_id;
+  let old = null;
+  if (eid) { const { data } = await supabase.from('events').select('id,start_at,recurrence').eq('id', eid).maybeSingle(); old = data; if (!old) eid = null; }
+  const today = fromLocal(ymd(new Date()));
+  const changed = !prev || JSON.stringify(prev.schedule) !== JSON.stringify(s) || prev.staff.join() !== [...staffIds].sort().join();
+  if (old && changed && new Date(old.start_at) < today) {
+    // end the old series yesterday, keep its history
+    const until = ymd(addDays(today, -1));
+    const { error } = await supabase.from('events').update({ recurrence: { ...old.recurrence, until } }).eq('id', old.id); if (error) throw error;
+    eid = null;
+    if (fromLocal(s.start_date) < today) {   // the new series starts today
+      const shifted = { ...s, start_date: ymd(today) };
+      Object.assign(payload, schEventPayload(shifted, prop, client));
+    }
+  }
+  if (eid) {
+    const upd = { ...payload };
+    if (old && JSON.stringify(old.recurrence) !== JSON.stringify(payload.recurrence)) upd.exdates = [];
+    const { error } = await supabase.from('events').update(upd).eq('id', eid); if (error) throw error;
+  } else {
+    const { data, error } = await supabase.from('events').insert(payload).select('id').single(); if (error) throw error;
+    eid = data.id;
+  }
+  await setPeople(eid);
+  const { error: e3 } = await supabase.from('properties').update({ schedule_event_id: eid }).eq('id', prop.id); if (e3) throw e3;
+  return eid;
+}
+// Stop the schedule: future cleanings disappear, past ones stay (so hours & pay history is kept)
+async function stopScheduleEvent(prop) {
+  if (!prop.schedule_event_id) return;
+  const { data: ev } = await supabase.from('events').select('id,start_at,recurrence').eq('id', prop.schedule_event_id).maybeSingle();
+  if (ev) {
+    const today = fromLocal(ymd(new Date()));
+    if (new Date(ev.start_at) >= today) { const { error } = await supabase.from('events').delete().eq('id', ev.id); if (error) throw error; }
+    else { const { error } = await supabase.from('events').update({ recurrence: { ...ev.recurrence, until: ymd(addDays(today, -1)) } }).eq('id', ev.id); if (error) throw error; }
+  }
+  const { error } = await supabase.from('properties').update({ schedule_event_id: null }).eq('id', prop.id); if (error) throw error;
+}
+
 async function openProperty(c, id) {
   prClient = c; prRow = id ? (c.properties || []).find((p) => p.id === id) : null;
-  if (id && (!prRow || !('access_info' in prRow))) { const { data } = await supabase.from('properties').select('*').eq('id', id).maybeSingle(); prRow = data; }
+  if (id && (!prRow || !('schedule' in prRow))) { const { data } = await supabase.from('properties').select('*').eq('id', id).maybeSingle(); prRow = data; }
   const manage = canManageClients();
   const p = prRow || {};
   const v = (k) => esc(p[k] ?? '');
-  const [{ data: cleaners }, { data: assigned }] = await Promise.all([
-    supabase.from('profiles').select('id,email,fname,lname,role,is_dev,status').in('role', ['cleaner', 'manager']).neq('status', 'disabled'),
+  const [{ data: staffRows }, { data: assigned }] = await Promise.all([
+    supabase.from('profiles').select('id,email,fname,lname,role,is_dev,status').in('role', STAFFABLE).neq('status', 'disabled'),
     id ? supabase.from('property_staff').select('user_id').eq('property_id', id) : Promise.resolve({ data: [] }),
   ]);
   const sel = new Set((assigned || []).map((a) => a.user_id));
-  const people = (cleaners || []).sort((a, b) => (a.is_dev - b.is_dev) || (a.role === 'cleaner' ? -1 : 1) - (b.role === 'cleaner' ? -1 : 1) || (fullName(a) || a.email).localeCompare(fullName(b) || b.email, 'bg'));
+  const order = { cleaner: 0, manager: 1, owner: 2, accountant: 3 };
+  const people = (staffRows || []).sort((a, b) => (a.is_dev - b.is_dev) || ((b.id === currentUserId) - (a.id === currentUserId)) || (order[a.role] - order[b.role]) || (fullName(a) || a.email).localeCompare(fullName(b) || b.email, 'bg'));
+  const s = p.schedule || null;
+  const sd = s || { freq: 'weekly', interval: 1, byweekday: [], start_time: '08:00', end_time: '10:00', start_date: p.contract_start || ymd(new Date()), until: p.contract_end || '' };
+  const prevState = id ? { schedule: s, staff: [...sel].sort() } : null;
   $('pr-root').innerHTML = `
     <h2>${id ? esc(p.name) : 'Нов обект'}</h2>
     <p class="lead">${esc(c.name)}</p>
     ${id ? `<div class="sf-quick">
-      ${p.address ? `<a class="sq-btn" href="${mapsHref(p.address)}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">${ic('map')}</span></a>` : ''}
+      ${p.address ? `<a class="sq-btn" href="${mapsHref([p.address, p.neighbourhood, p.city].filter(Boolean).join(', '))}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">${ic('map')}</span></a>` : ''}
       ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>` : ''}
       ${manage ? `<button type="button" class="sq-btn sq-del" data-act="del-prop" title="Изтрий обекта" aria-label="Изтрий обекта"><span class="emo">${ic('trash')}</span></button>` : ''}
     </div>` : ''}
@@ -3052,13 +3161,17 @@ async function openProperty(c, id) {
     <form class="pr-form" novalidate>
       <div class="field"><label>Име на обекта</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Офис Лозенец, ет. 3"></div>
       <div class="two">
-        <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [e, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(PR_STATUS).map(([k, l]) => `<option value="${k}" ${(p.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       </div>
       <div class="sf-group">Местоположение</div>
-      <div class="field"><label>Адрес</label><input class="input" name="address" value="${v('address')}" autocomplete="off"></div>
+      <div class="field"><label>Адрес</label><input class="input" name="address" value="${v('address')}" autocomplete="off" placeholder="ул., №, бл., вх., ет., ап."></div>
       <div class="two">
+        <div class="field"><label>Квартал</label><input class="input" name="neighbourhood" value="${v('neighbourhood')}" autocomplete="off" placeholder="напр. Младост 1"></div>
         <div class="field"><label>Район</label><input class="input" name="district" value="${v('district')}" list="sofia-districts" autocomplete="off"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Град</label><input class="input" name="city" value="${esc(p.city ?? 'София')}" autocomplete="off" list="bg-cities"></div>
         <div class="field"><label>Площ (м²)</label><input class="input" name="area_m2" type="number" min="0" step="1" inputmode="decimal" value="${v('area_m2')}"></div>
       </div>
       <div class="field"><label>Достъп</label><textarea class="input" name="access_info" rows="2" placeholder="ключове, кодове, вход, паркинг…">${v('access_info')}</textarea></div>
@@ -3081,54 +3194,157 @@ async function openProperty(c, id) {
         <div class="field"><label>Плащане</label><select class="input" name="payment_method">${Object.entries(PAY_METHOD).map(([k, l]) => `<option value="${k}" ${(p.payment_method || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="invoice" ${p.invoice === false ? '' : 'checked'}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>Издава се фактура</label></div>
       </div>
+
+      <div class="sf-group">Хора на обекта</div>
+      <div class="field">
+        <div class="ev-people">${people.length ? people.map((u) => `<label><input type="checkbox" name="staff" value="${u.id}" ${sel.has(u.id) ? 'checked' : ''}><span class="avatar">${esc(initials(u))}</span><span>${esc(fullName(u) || u.email)}${u.id === currentUserId ? ' (вие)' : ''}${u.is_dev ? ' (тест)' : ''}<small>${esc(ROLE_LABELS[u.role])}</small></span></label>`).join('') : '<div class="hint">Няма служители.</div>'}</div>
+      </div>
+
+      <div class="sf-group">График на почистванията</div>
+      <label class="check"><input type="checkbox" name="sch_on" ${s ? 'checked' : ''}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>Редовен график</label>
+      <div class="sch" ${s ? '' : 'hidden'}>
+        <div class="two">
+          <div class="field"><label>Колко често</label><select class="input" name="sch_freq">${Object.entries(SCH_FREQ).map(([k, l]) => `<option value="${k}" ${sd.freq === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+          <div class="field"><label>Повторение</label><select class="input" name="sch_interval">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${Number(sd.interval || 1) === n ? 'selected' : ''}>${n === 1 ? 'всеки път' : n === 2 ? 'през едно' : 'на всеки ' + n}</option>`).join('')}</select></div>
+        </div>
+        <div class="field sch-days" ${sd.freq === 'weekly' ? '' : 'hidden'}><label>Дни</label>
+          <div class="ev-days">${WD_KEYS.map((d) => `<label><input type="checkbox" name="sch_day" value="${d}" ${(sd.byweekday || []).includes(d) ? 'checked' : ''}><span>${WD_SHORT[d]}</span></label>`).join('')}</div>
+        </div>
+        <div class="two">
+          <div class="field"><label>От</label><input class="input" name="sch_start_time" type="time" step="900" value="${esc(sd.start_time)}"></div>
+          <div class="field"><label>До</label><input class="input" name="sch_end_time" type="time" step="900" value="${esc(sd.end_time)}"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label>Започва на</label><input class="input" name="sch_start_date" type="date" value="${esc(sd.start_date || '')}"></div>
+          <div class="field"><label>До дата (по избор)</label><input class="input" name="sch_until" type="date" value="${esc(sd.until || '')}"></div>
+        </div>
+        <div class="sch-sum" data-k="schsum"></div>
+        <div class="sch-cal" data-k="schcal"></div>
+      </div>
+      <div class="field"><label>Бележка за графика</label><input class="input" name="schedule_note" value="${v('schedule_note')}" autocomplete="off" placeholder="напр. ключът се взима от охраната"></div>
+
       <div class="sf-group">Работа</div>
-      <div class="field"><label>График</label><input class="input" name="schedule_note" value="${v('schedule_note')}" autocomplete="off" placeholder="напр. пн, ср, пт 07:00–09:00"></div>
       <div class="field"><label>Протокол (какво се почиства)</label><textarea class="input" name="protocol" rows="4" placeholder="Всеки ред — една задача">${v('protocol')}</textarea></div>
-      <div class="field"><label>Хигиенисти на обекта</label>
-        <div class="ev-people">${people.length ? people.map((u) => `<label><input type="checkbox" name="staff" value="${u.id}" ${sel.has(u.id) ? 'checked' : ''}><span class="avatar">${esc(initials(u))}</span><span>${esc(fullName(u) || u.email)}${u.is_dev ? ' (тест)' : ''}<small>${esc(ROLE_LABELS[u.role])}</small></span></label>`).join('') : '<div class="hint">Няма хигиенисти.</div>'}</div></div>
       <div class="field"><label>Бележки</label><textarea class="input" name="notes" rows="2">${v('notes')}</textarea></div>
       ${manage ? `<div class="actions"><button class="btn" type="submit"><span class="label">${id ? 'Запази' : 'Създай обект'}</span></button>
         ${id ? `<button class="btn ghost-danger" type="button" data-act="del"><span class="label">${ic('trash')} Изтрий обекта</span></button>` : ''}</div>` : ''}
     </form>`;
   const root = $('pr-root'), f = root.querySelector('.pr-form');
   if (!manage) f.querySelectorAll('input, select, textarea').forEach((x) => { x.disabled = true; });
-  f.addEventListener('submit', async (e) => {
-    e.preventDefault();
+
+  // --- schedule UI
+  const readSchedule = () => {
+    if (!f.sch_on.checked) return null;
+    return { freq: f.sch_freq.value, interval: Number(f.sch_interval.value) || 1,
+      byweekday: f.sch_freq.value === 'weekly' ? [...f.querySelectorAll('input[name="sch_day"]:checked')].map((x) => x.value) : [],
+      start_time: f.sch_start_time.value, end_time: f.sch_end_time.value, start_date: f.sch_start_date.value, until: f.sch_until.value || null };
+  };
+  const schError = (x) => {
+    if (!x) return null;
+    if (x.freq === 'weekly' && !x.byweekday.length) return 'Изберете поне един ден за графика.';
+    if (!x.start_time || !x.end_time) return 'Изберете часове за графика.';
+    if (x.start_time === x.end_time) return 'Началният и крайният час на графика са еднакви.';
+    if (!x.start_date) return 'Изберете от коя дата започва графикът.';
+    if (x.until && x.until < x.start_date) return '„До дата“ е преди началото на графика.';
+    return null;
+  };
+  const linked = () => !!prRow?.schedule_event_id;
+  const renderSch = () => {
+    const x = readSchedule();
+    root.querySelector('.sch').hidden = !f.sch_on.checked;
+    root.querySelector('.sch-days').hidden = f.sch_freq.value !== 'weekly';
+    const sumBox = root.querySelector('[data-k="schsum"]'), calBox = root.querySelector('[data-k="schcal"]');
+    if (!x) { calBox.innerHTML = linked() && manage ? `<div class="alert info">${ICONS.info}<span>Графикът е изключен. При запазване бъдещите почиствания ще бъдат махнати от календара (минали остават).</span></div>` : ''; return; }
+    const err = schError(x);
+    if (err) { sumBox.innerHTML = `<span class="muted">${esc(err)}</span>`; }
+    else {
+      const per = schPerMonth(x), h = schDurH(x), price = Number(String(f.price.value).replace(',', '.')) || 0;
+      const rev = f.price_model.value === 'visit' ? per * price : f.price_model.value === 'hour' ? per * h * price : price;
+      sumBox.innerHTML = `${ic('repeat')} <span>${esc(schText(x))}<br><b>≈ ${Math.round(per * 10) / 10}</b> почиствания / месец · <b>≈ ${Math.round(per * h * 10) / 10} ч</b> / месец${price ? ` · <b>≈ ${eur(rev)}</b> / месец` : ''}</span>`;
+    }
+    if (!manage) { calBox.innerHTML = linked() ? `<div class="sch-linked">${ic('check')} В календара</div>` : ''; return; }
+    calBox.innerHTML = linked()
+      ? `<div class="sch-linked">${ic('check')} В календара — промените се прилагат при „Запази“.</div>
+         <div class="actions"><button type="button" class="btn secondary" data-act="sch-stop"><span class="label">${ic('x')} Махни от календара</span></button></div>`
+      : `<div class="actions"><button type="button" class="btn" data-act="sch-add"><span class="label">${ic('plus')} Добави в календара</span></button></div>
+         <p class="note">Създава всички бъдещи почиствания в календара, назначени на хората на обекта.</p>`;
+    calBox.querySelector('[data-act="sch-add"]')?.addEventListener('click', () => save({ addToCalendar: true }));
+    calBox.querySelector('[data-act="sch-stop"]')?.addEventListener('click', async () => {
+      const yes = await confirmDialog({ title: 'Махане от календара?', text: 'Бъдещите почиствания за този обект ще изчезнат от календара. Миналите остават (за часовете и заплатите). Графикът остава записан в обекта.', ok: 'Махни' });
+      if (!yes) return;
+      try { await stopScheduleEvent(prRow); prRow.schedule_event_id = null; toast('Махнато от календара.'); renderSch(); calendar?.refetchEvents(); refreshClient(c.id, 'props'); }
+      catch (err2) { clAlert(root, 'error', authMessage(err2)); }
+    });
+  };
+  ['sch_on', 'sch_freq', 'sch_interval', 'sch_start_time', 'sch_end_time', 'sch_start_date', 'sch_until', 'price', 'price_model'].forEach((n) => f[n]?.addEventListener('change', renderSch));
+  f.querySelectorAll('input[name="sch_day"]').forEach((x) => x.addEventListener('change', renderSch));
+  f.contract_start.addEventListener('change', () => { if (!prRow?.schedule && !f.sch_start_date.dataset.touched) f.sch_start_date.value = f.contract_start.value || ymd(new Date()); renderSch(); });
+  f.contract_end.addEventListener('change', () => { if (!prRow?.schedule && !f.sch_until.dataset.touched) f.sch_until.value = f.contract_end.value; renderSch(); });
+  f.sch_start_date.addEventListener('input', () => { f.sch_start_date.dataset.touched = '1'; });
+  f.sch_until.addEventListener('input', () => { f.sch_until.dataset.touched = '1'; });
+  renderSch();
+
+  // --- save (optionally also put the schedule into the calendar)
+  let saving = false;
+  async function save({ addToCalendar = false } = {}) {
+    if (saving) return; saving = true;
     const val = (n) => (f[n]?.value || '').trim() || null;
     const num = (n) => { const x = val(n); return x === null ? null : Number(String(x).replace(',', '.')); };
-    const row = { client_id: c.id, name: val('name'), kind: val('kind'), status: val('status'), address: val('address'), district: val('district'),
-      area_m2: num('area_m2'), access_info: val('access_info'), contact_name: val('contact_name'), contact_phone: val('contact_phone'), contact_email: val('contact_email'),
-      contract_start: val('contract_start'), contract_end: val('contract_end'), price: num('price'), price_model: val('price_model'),
-      payment_method: val('payment_method'), invoice: f.invoice.checked, schedule_note: val('schedule_note'), protocol: val('protocol'), notes: val('notes') };
-    if (!row.name) { clAlert(root, 'error', 'Въведете име на обекта.'); return f.name.focus(); }
-    if (row.contract_start && row.contract_end && row.contract_end < row.contract_start) return clAlert(root, 'error', 'Краят на договора е преди началото.');
-    if (row.contact_email && !validEmail(row.contact_email)) return clAlert(root, 'error', 'Невалиден имейл.');
+    const schedule = readSchedule();
+    const row = { client_id: c.id, name: val('name'), kind: val('kind'), status: val('status'), address: val('address'), neighbourhood: val('neighbourhood'),
+      district: val('district'), city: val('city'), area_m2: num('area_m2'), access_info: val('access_info'), contact_name: val('contact_name'),
+      contact_phone: val('contact_phone'), contact_email: val('contact_email'), contract_start: val('contract_start'), contract_end: val('contract_end'),
+      price: num('price'), price_model: val('price_model'), payment_method: val('payment_method'), invoice: f.invoice.checked,
+      schedule, schedule_note: val('schedule_note'), protocol: val('protocol'), notes: val('notes') };
+    const fail = (m) => { saving = false; clAlert(root, 'error', m); root.closest('.sheet-inner')?.scrollTo({ top: 0, behavior: 'smooth' }); };
+    if (!row.name) { f.name.focus(); return fail('Въведете име на обекта.'); }
+    if (row.contract_start && row.contract_end && row.contract_end < row.contract_start) return fail('Краят на договора е преди началото.');
+    if (row.contact_email && !validEmail(row.contact_email)) return fail('Невалиден имейл.');
+    const se = schError(schedule); if (se) return fail(se);
+    if (addToCalendar && !schedule) return fail('Включете „Редовен график“ и попълнете го.');
     const staffIds = [...f.querySelectorAll('input[name="staff"]:checked')].map((x) => x.value);
-    const btn = f.querySelector('button[type="submit"]'); busy(btn, true, 'Запазване…');
+    if (addToCalendar && !staffIds.length) {
+      const go = await confirmDialog({ title: 'Никой не е назначен', text: 'В „Хора на обекта“ няма избран човек. Почистванията ще са в календара без назначени хора. Продължаване?', ok: 'Продължи' });
+      if (!go) { saving = false; return; }
+    }
+    const btn = f.querySelector('button[type="submit"]'); if (btn) busy(btn, true, 'Запазване…');
     try {
       let pid = prRow?.id;
       if (pid) { const { error } = await supabase.from('properties').update(row).eq('id', pid); if (error) throw error; }
-      else { const { data, error } = await supabase.from('properties').insert(row).select('id').single(); if (error) throw error; pid = data.id; }
+      else { const { data, error } = await supabase.from('properties').insert(row).select('*').single(); if (error) throw error; pid = data.id; prRow = data; }
       const add = staffIds.filter((x) => !sel.has(x)), rem = [...sel].filter((x) => !staffIds.includes(x));
       if (rem.length) { const { error } = await supabase.from('property_staff').delete().eq('property_id', pid).in('user_id', rem); if (error) throw error; }
       if (add.length) { const { error } = await supabase.from('property_staff').insert(add.map((u) => ({ property_id: pid, user_id: u }))); if (error) throw error; }
-      $('dlg-prop').close(); toast(prRow ? 'Обектът е запазен.' : 'Обектът е създаден.');
+      const propNow = { ...prRow, ...row, id: pid };
+      let msg = prevState ? 'Обектът е запазен.' : 'Обектът е създаден.';
+      if (schedule && (addToCalendar || propNow.schedule_event_id)) {
+        await syncScheduleEvent(propNow, c, schedule, staffIds, prevState);
+        msg = addToCalendar ? 'Графикът е добавен в календара.' : msg + ' Календарът е обновен.';
+      } else if (!schedule && propNow.schedule_event_id) {
+        await stopScheduleEvent(propNow);
+        msg += ' Бъдещите почиствания са махнати от календара.';
+      }
+      $('dlg-prop').close(); toast(msg);
+      calendar?.refetchEvents();
       refreshClient(c.id, 'props');
-    } catch (err) { clAlert(root, 'error', authMessage(err)); }
-    finally { busy(btn, false); }
-  });
+    } catch (err) { fail(authMessage(err)); }
+    finally { saving = false; if (btn) busy(btn, false); }
+  }
+  f.addEventListener('submit', (e) => { e.preventDefault(); save(); });
+
   const delProp = async () => {
-    const yes = await confirmDialog({ title: `Изтриване на „${prRow.name}“?`, text: 'Обектът ще бъде изтрит завинаги. Ако само е спрял, по-добре сменете статуса на „Приключил“.', ok: 'Изтрий обекта' });
+    const yes = await confirmDialog({ title: `Изтриване на „${prRow.name}“?`, text: 'Обектът и всичките му почиствания в календара ще бъдат изтрити завинаги. Ако само е спрял, по-добре сменете статуса на „Приключил“.', ok: 'Изтрий обекта' });
     if (!yes) return;
     const { data, error } = await supabase.from('properties').delete().eq('id', prRow.id).select('id');
     if (error) return clAlert(root, 'error', authMessage(error));
     if (!data?.length) return clAlert(root, 'error', 'Обектът не беше изтрит — нямате права.');
-    $('dlg-prop').close(); toast('Обектът е изтрит.'); refreshClient(c.id, 'props');
+    $('dlg-prop').close(); toast('Обектът е изтрит.'); calendar?.refetchEvents(); refreshClient(c.id, 'props');
   };
   f.querySelector('[data-act="del"]')?.addEventListener('click', delProp);
   root.querySelector('[data-act="del-prop"]')?.addEventListener('click', delProp);
   $('dlg-prop').showModal();
 }
+
 
 /* ---------- Staff section ---------- */
 const STAFF_ROLES = ['owner', 'manager', 'cleaner', 'accountant'];
@@ -3437,10 +3653,11 @@ function mountStaffFile(root, p, perms) {
     const rows = data || [];
     box.innerHTML = rows.length ? `<div class="mini-list">${rows.map((r) => `
       <details class="prop-mini">
-        <summary><span class="avatar emo-av">${(PR_KIND[r.kind] || PR_KIND.other)[0]}</span><span style="min-width:0">${esc(r.name)}<small>${esc(r.client_name)}${r.address ? ' · ' + esc(r.address) : ''}</small></span></summary>
+        <summary><span class="avatar emo-av">${(PR_KIND[r.kind] || PR_KIND.other)[0]}</span><span style="min-width:0">${esc(r.name)}<small>${esc(r.client_name)}${r.address ? ' · ' + esc([r.address, r.neighbourhood].filter(Boolean).join(', ')) : ''}</small></span></summary>
         <dl class="pf-dl">
-          ${r.address ? `<dt>Адрес</dt><dd><a href="${mapsHref(r.address)}" target="_blank" rel="noopener">${esc(r.address)} ↗</a></dd>` : ''}
-          ${r.schedule_note ? `<dt>График</dt><dd>${esc(r.schedule_note)}</dd>` : ''}
+          ${r.address ? `<dt>Адрес</dt><dd><a href="${mapsHref([r.address, r.neighbourhood, r.city].filter(Boolean).join(', '))}" target="_blank" rel="noopener">${esc([r.address, r.neighbourhood, r.district, r.city].filter(Boolean).join(', '))} ↗</a></dd>` : ''}
+          ${r.schedule ? `<dt>График</dt><dd>${esc(schText(r.schedule))}</dd>` : ''}
+          ${r.schedule_note ? `<dt>Бележка</dt><dd>${esc(r.schedule_note)}</dd>` : ''}
           ${r.contact_name || r.contact_phone ? `<dt>Контакт</dt><dd>${esc(r.contact_name || '')} ${r.contact_phone ? `<a href="${telHref(r.contact_phone)}">${esc(r.contact_phone)}</a>` : ''}</dd>` : ''}
           ${r.access_info ? `<dt>Достъп</dt><dd>${esc(r.access_info)}</dd>` : ''}
           ${r.protocol ? `<dt>Протокол</dt><dd>${esc(r.protocol)}</dd>` : ''}
