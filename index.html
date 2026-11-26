@@ -1114,6 +1114,23 @@
     .rbar { width: auto; max-width: 340px; }
     .ptbl td.c-acc { grid-column: 1 / -1; }
   }
+
+  /* ---------- Clients table: grouped columns ---------- */
+  .ptbl td.g-head { display: none; }
+  .ptbl thead tr.g-row th { top: 0; height: 30px; padding: 7px 12px; background: var(--ink); color: var(--paper); border-bottom: 1px solid var(--ink); font-size: 10.5px; }
+  .ptbl thead tr.c-row th { top: 30px; }
+  .ptbl thead tr.g-row th:first-child { z-index: 4; }
+  .ptbl th.g-first, .ptbl td.g-first { border-left: 1px solid var(--ink); }
+  .ptbl thead tr.g-row th.g-first { border-left: 1px solid var(--paper-2); }
+  .ptbl th:first-child, .ptbl td.c-main { border-left: none !important; }
+  @media (max-width: 860px) {
+    .ptbl td.g-first { border-left: none; }
+    .ptbl td.g-head { display: block; grid-column: 1 / -1; padding: 6px 12px; background: var(--ink); color: var(--paper);
+      font-family: var(--font-ui); font-size: 10.5px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; border-bottom: none; }
+    .ptbl td.g-head::before { content: none !important; }
+    .ptbl td[data-g="money"].c-bar, .ptbl td[data-g="money"].c-margin { grid-column: 1 / -1; }
+    .ptbl td.c-ctr, .ptbl td.c-contact, .ptbl td.c-addr, .ptbl td.c-acc { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>
@@ -1268,7 +1285,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.25 — баланси, договори, достъп</div>
+      <div class="version">v0.26 — групирани колони</div>
     </div>
   </aside>
 
@@ -3133,6 +3150,15 @@ function contractState(p) {
 }
 const fmtD = (d) => d ? fromLocal(d).toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
 
+// Columns grouped like the live CRM: everything of one kind sits together
+const CL_GROUPS = [
+  { id: 'client', title: '', cols: [['client', 'Клиент'], ['status', 'Статус']] },
+  { id: 'money', title: 'Финанси', cols: [['balance', 'Неплатено / предплатено'], ['price', 'Цена / почистване'], ['share', 'Дял от приходите'], ['leave', 'Приход, ако си тръгне'], ['margin', 'Марж'], ['pay', 'Предпочита да плаща']] },
+  { id: 'work', title: 'Работа', cols: [['service', 'Услуга'], ['schedule', 'Честота и график'], ['tplan', 'Време (план)'], ['treal', 'Време (реално)'], ['people', 'Хигиенисти']] },
+  { id: 'contract', title: 'Договор', cols: [['contract', 'Договор']] },
+  { id: 'place', title: 'Обект', cols: [['address', 'Адрес'], ['access', 'Достъп']] },
+  { id: 'contact', title: 'Контакт', cols: [['contact', 'Лице за контакт']] },
+];
 function renderClients() {
   const q = $('c-search').value.trim().toLowerCase();
   const counts = { all: clients.length };
@@ -3157,7 +3183,6 @@ function renderClients() {
     if (p && p.status !== 'active' && c.status === 'active') return `<span class="badge pending">${esc(PR_STATUS[p.status])}</span>`;
     return `<span class="badge ${c.status === 'active' ? 'active' : c.status === 'ended' ? 'disabled' : 'pending'}">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}</span>`;
   };
-  const td = (label, html, cls = '') => `<td class="${cls}" data-l="${label}">${html}</td>`;
   const dash = '<span class="dim">—</span>';
   const manageC = canManageClients();
   const body = rows.map(({ c, p, n, cEcon }) => {
@@ -3174,32 +3199,38 @@ function renderClients() {
     const ppl = (p?.property_staff || []).map((x) => staffNames[x.user_id]).filter(Boolean);
     const H = margin !== null && isFinite(margin) ? health(margin) : null;
     const mcls = H && ['loss', 'bad'].includes(H.k) ? 'm-bad' : H?.k === 'weak' ? 'm-weak' : '';
-    return `<tr data-cid="${c.id}" ${p ? `data-pid="${p.id}"` : ''} class="${c.status !== 'active' ? 'dimrow' : ''} ${mcls}">
-      ${td('Клиент', `<div class="pc-client">${manageC ? `<button type="button" class="vip-tg ${c.vip ? 'on' : ''}" data-vip="${c.id}" title="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-label="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-pressed="${!!c.vip}">${ic('star')}</button>` : ''}<button type="button" class="pc-cname" data-open-client="${c.id}">${esc(c.name)}</button>${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
-        <div class="pc-prop">${p ? `${(PR_KIND[p.kind] || PR_KIND.other)[0]} ${esc(p.name)}` : '<span class="dim">без обект</span>'}${n > 1 ? `<span class="pc-n">${n} обекта</span>` : ''}</div>`, 'c-main')}
-      ${td('Статус', stBadge(c, p), 'c-st')}
-      ${td('Неплатено / предплатено', balanceHTML(c.id), 'num c-bal')}
-      ${td('Цена / почистване', e?.perVisit ? `<b>${eur(e.perVisit)}</b>${p.price_model !== 'visit' ? `<small>${eur(Number(p.price))} ${PRICE_MODEL[p.price_model]}</small>` : ''}` : dash, 'num')}
-      ${td('Време (план)', hoursPlan ? `<b>${fmtHM(hoursPlan)}</b>` : dash, 'num')}
-      ${td('Време (реално)', hoursPlan ? `<b>${fmtHM(hoursPlan)}</b><small>засега = план</small>` : dash, 'num')}
-      ${td('Дял от приходите', shareBarHTML(cEcon.revenue, total), 'c-bar')}
-      ${td('Приход, ако си тръгне', leaveBarHTML(cEcon.revenue, total), 'c-bar')}
-      ${td('Контакт', (cName || cPhone || cMail) ? `${cName ? `<div>${esc(cName)}</div>` : ''}${cPhone ? `<a class="lnk" href="${telHref(cPhone)}">${esc(cPhone)}</a>` : ''}${cMail ? `<a class="lnk sm" href="mailto:${esc(cMail)}">${esc(cMail)}</a>` : ''}` : dash, 'c-contact')}
-      ${td('Договор', p ? (p.contract_signed
+    const C = {
+      client: [`<div class="pc-client">${manageC ? `<button type="button" class="vip-tg ${c.vip ? 'on' : ''}" data-vip="${c.id}" title="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-label="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-pressed="${!!c.vip}">${ic('star')}</button>` : ''}<button type="button" class="pc-cname" data-open-client="${c.id}">${esc(c.name)}</button>${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
+        <div class="pc-prop">${p ? `${(PR_KIND[p.kind] || PR_KIND.other)[0]} ${esc(p.name)}` : '<span class="dim">без обект</span>'}${n > 1 ? `<span class="pc-n">${n} обекта</span>` : ''}</div>`, 'c-main'],
+      status: [stBadge(c, p), 'c-st'],
+      balance: [balanceHTML(c.id), 'num c-bal'],
+      price: [e?.perVisit ? `<b>${eur(e.perVisit)}</b>${p.price_model !== 'visit' ? `<small>${eur(Number(p.price))} ${PRICE_MODEL[p.price_model]}</small>` : ''}` : dash, 'num'],
+      share: [shareBarHTML(cEcon.revenue, total), 'c-bar'],
+      leave: [leaveBarHTML(cEcon.revenue, total), 'c-bar'],
+      margin: [p ? `${mcls ? `<span class="mflag ${mcls}" title="${H.label}">${ic('alert')} ${mcls === 'm-bad' ? 'Лош клиент' : 'Слаб марж'}</span>` : ''}${marginMeterHTML(margin, `по план · ${fmtHM(hoursPlan)}`)}` : dash, 'c-margin'],
+      pay: [p ? `<span class="mchip ${p.invoice ? 'm-invoice' : ''}">${esc(PAY_METHOD[p.payment_method] || '')}</span><small>${p.invoice ? 'иска фактура' : 'без фактура'}</small>` : dash, ''],
+      service: [p ? `<div class="svc">${esc(SERVICE[p.service_type || 'regular'])}</div>` : dash, ''],
+      schedule: [p?.schedule ? `<div>${esc(everyText(p.schedule.freq, p.schedule.interval))}${p.schedule.freq === 'weekly' && p.schedule.byweekday?.length ? ' — ' + p.schedule.byweekday.map((d) => WD_SHORT[d]).join(', ') : ''}</div><small>${esc(p.schedule.start_time)}–${esc(p.schedule.end_time)}${next ? ' · следващо ' + next.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' }) : ''}${p.schedule_event_id ? ' · в календара' : ''}</small>` : (p?.schedule_note ? `<small>${esc(p.schedule_note)}</small>` : dash), ''],
+      tplan: [hoursPlan ? `<b>${fmtHM(hoursPlan)}</b>` : dash, 'num'],
+      treal: [hoursPlan ? `<b>${fmtHM(hoursPlan)}</b><small>засега = план</small>` : dash, 'num'],
+      people: [ppl.length ? `<div class="pc-ppl">${ppl.map((u) => `<span class="avatar xs" title="${esc(fullName(u) || u.email)}">${esc(initials(u))}</span>`).join('')}</div><small>${esc(ppl.map((u) => u.fname || u.email).join(', '))}</small>` : ((p?.property_staff || []).length ? `<small>${p.property_staff.length} души</small>` : dash), ''],
+      contract: [p ? (p.contract_signed
         ? `${p.contract_file ? `<button type="button" class="ctr-no" data-ctr="${esc(p.contract_file)}" title="Отвори подписания договор (PDF)">${ic('ext')} ${esc(p.contract_number || 'Договор')}</button>` : `<b class="ctr-no plain">${esc(p.contract_number || 'Подписан')}</b><small>няма качен PDF</small>`}
            <small class="ct ct-${cs.k}">${p.contract_end ? 'до ' + fmtD(p.contract_end) : 'безсрочен'}${cs.k === 'soon' ? ' · изтича скоро' : cs.k === 'over' ? ' · изтекъл' : ''}</small>`
-        : `<span class="ct ct-none">Няма подписан</span>${p.contract_end ? `<small>до ${fmtD(p.contract_end)}</small>` : ''}`) : dash)}
-      ${td('Адрес', addr.length ? `<a class="lnk addr" href="${mapsHref(addr.join(', '))}" target="_blank" rel="noopener">${esc(addr[0])}</a>${addr.length > 1 ? `<small>${esc(addr.slice(1).join(', '))}</small>` : ''}` : dash, 'c-addr')}
-      ${td('Достъп', p && (p.access_method || p.access_info) ? `${p.access_method ? `<div>${esc(ACCESS[p.access_method])}</div>` : ''}${p.access_info ? `<small>${esc(p.access_info)}</small>` : ''}` : dash, 'c-acc')}
-      ${td('Услуга и честота', p ? `<div class="svc">${esc(SERVICE[p.service_type || 'regular'])}</div>` : '', 'c-sch')}
-      ${td('График', p?.schedule ? `<div>${esc(everyText(p.schedule.freq, p.schedule.interval))}${p.schedule.freq === 'weekly' && p.schedule.byweekday?.length ? ' — ' + p.schedule.byweekday.map((d) => WD_SHORT[d]).join(', ') : ''}</div><small>${esc(p.schedule.start_time)}–${esc(p.schedule.end_time)}${next ? ' · следващо ' + next.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' }) : ''}${p.schedule_event_id ? ' · в календара' : ''}</small>` : (p?.schedule_note ? `<small>${esc(p.schedule_note)}</small>` : dash))}
-      ${td('Хигиенисти', ppl.length ? `<div class="pc-ppl">${ppl.map((u) => `<span class="avatar xs" title="${esc(fullName(u) || u.email)}">${esc(initials(u))}</span>`).join('')}</div><small>${esc(ppl.map((u) => u.fname || u.email).join(', '))}</small>` : ((p?.property_staff || []).length ? `<small>${p.property_staff.length} души</small>` : dash))}
-      ${td('Марж', p ? `${mcls ? `<span class="mflag ${mcls}" title="${H.label}">${ic('alert')} ${mcls === 'm-bad' ? 'Лош клиент' : 'Слаб марж'}</span>` : ''}${marginMeterHTML(margin, `по план · ${fmtHM(hoursPlan)}`)}` : dash, 'c-margin')}
-      ${td('Предпочита да плаща', p ? `<span class="mchip ${p.invoice ? 'm-invoice' : ''}">${esc(PAY_METHOD[p.payment_method] || '')}</span><small>${p.invoice ? 'иска фактура' : 'без фактура'}</small>` : dash)}
-    </tr>`;
+        : `<span class="ct ct-none">Няма подписан</span>${p.contract_end ? `<small>до ${fmtD(p.contract_end)}</small>` : ''}`) : dash, 'c-ctr'],
+      address: [addr.length ? `<a class="lnk addr" href="${mapsHref(addr.join(', '))}" target="_blank" rel="noopener">${esc(addr[0])}</a>${addr.length > 1 ? `<small>${esc(addr.slice(1).join(', '))}</small>` : ''}` : dash, 'c-addr'],
+      access: [p && (p.access_method || p.access_info) ? `${p.access_method ? `<div>${esc(ACCESS[p.access_method])}</div>` : ''}${p.access_info ? `<small>${esc(p.access_info)}</small>` : ''}` : dash, 'c-acc'],
+      contact: [(cName || cPhone || cMail) ? `${cName ? `<div>${esc(cName)}</div>` : ''}${cPhone ? `<a class="lnk" href="${telHref(cPhone)}">${esc(cPhone)}</a>` : ''}${cMail ? `<a class="lnk sm" href="mailto:${esc(cMail)}">${esc(cMail)}</a>` : ''}` : dash, 'c-contact'],
+    };
+    const cells = CL_GROUPS.map((g) => (g.title ? `<td class="g-head" data-g="${g.id}">${g.title}</td>` : '') +
+      g.cols.map(([k, label], i) => `<td class="${C[k][1]} ${i === 0 ? 'g-first' : ''}" data-l="${label}" data-g="${g.id}">${C[k][0]}</td>`).join('')).join('');
+    return `<tr data-cid="${c.id}" ${p ? `data-pid="${p.id}"` : ''} class="${c.status !== 'active' ? 'dimrow' : ''} ${mcls}">${cells}</tr>`;
   }).join('');
   $('c-list').innerHTML = `<div class="ptbl-wrap"><table class="ptbl">
-    <thead><tr><th>Клиент</th><th>Статус</th><th>Неплатено / предплатено</th><th>Цена / почистване</th><th>Време (план)</th><th>Време (реално)</th><th>Дял от приходите</th><th>Приход, ако си тръгне</th><th>Контакт</th><th>Договор</th><th>Адрес</th><th>Достъп</th><th>Услуга и честота</th><th>График</th><th>Хигиенисти</th><th>Марж</th><th>Предпочита да плаща</th></tr></thead>
+    <thead>
+      <tr class="g-row">${CL_GROUPS.map((g) => `<th colspan="${g.cols.length}" class="g-first">${g.title || 'Клиент'}</th>`).join('')}</tr>
+      <tr class="c-row">${CL_GROUPS.map((g) => g.cols.map(([, label], i) => `<th class="${i === 0 ? 'g-first' : ''}">${label}</th>`).join('')).join('')}</tr>
+    </thead>
     <tbody>${body}</tbody></table></div>`;
 }
 $('c-list').addEventListener('click', async (e) => {
