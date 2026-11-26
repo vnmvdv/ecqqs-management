@@ -1131,6 +1131,12 @@
     .ptbl td[data-g="money"].c-bar, .ptbl td[data-g="money"].c-margin { grid-column: 1 / -1; }
     .ptbl td.c-ctr, .ptbl td.c-contact, .ptbl td.c-addr, .ptbl td.c-acc { grid-column: 1 / -1; }
   }
+
+  /* staff: cleaning counts */
+  .stat .val small.unit { font-family: var(--font-ui); font-size: 11px; font-weight: 500; color: var(--muted); }
+  .snum { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-family: var(--font-ui); font-size: 11.5px; color: var(--ink-2); white-space: normal; }
+  .snum b { font-family: var(--font-mono); color: var(--ink); }
+  .snum .due, .snum .due b { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -1285,7 +1291,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.26 — групирани колони</div>
+      <div class="version">v0.27 — брой почиствания</div>
     </div>
   </aside>
 
@@ -3914,8 +3920,23 @@ async function loadStaff() {
   const byId = Object.fromEntries((details || []).map((d) => [d.id, d]));
   staff = (profs || []).map((p) => ({ ...p, d: byId[p.id] || {} }));
   renderStaff();
+  loadStaffNumbers();
 }
 
+let staffNums = {};   // user_id -> staffCalc result
+async function loadStaffNumbers() {
+  try { await waitFor(() => window.rrule); } catch { return; }
+  const [{ data: evs }, { data: pays }] = await Promise.all([
+    supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,event_assignees(user_id)'),
+    supabase.from('staff_payments').select('user_id,amount,paid_on'),
+  ]);
+  const evBy = {}, payBy = {};
+  for (const ev of evs || []) for (const a of ev.event_assignees || []) (evBy[a.user_id] ||= []).push(ev);
+  for (const x of pays || []) (payBy[x.user_id] ||= []).push(x);
+  staffNums = {};
+  for (const p of staff) staffNums[p.id] = staffCalc(evBy[p.id] || [], payBy[p.id] || [], Number(p.d?.hourly_rate ?? 13));
+  renderStaff();
+}
 function renderStaff() {
   const q = $('s-search').value.trim().toLowerCase();
   const counts = { all: staff.length };
@@ -3932,6 +3953,9 @@ function renderStaff() {
       <div style="min-width:0">
         <div class="nm">${esc(fullName(p) || 'Без име')}</div>
         <div class="sub">${esc(ROLE_LABELS[p.role])}${p.phone ? ' · ' + esc(p.phone) : ''}${p.d.district ? ' · ' + esc(p.d.district) : ''}</div>
+        ${(() => { const n = staffNums[p.id]; if (!n || (!n.cAll && !n.cMonthPlan && !n.cNext && !n.paidAll)) return '';
+          const mon = monthName(n.mStart);
+          return `<div class="snum"><span><b>${n.cMonth}/${n.cMonthPlan}</b> почиств. ${esc(mon)}</span><span><b>${hrs(n.monthPlan)}</b> прогноза</span>${n.cNext ? `<span><b>${n.cNext}</b> следв. месец</span>` : ''}${n.owed > 0.5 ? `<span class="due"><b>${eur(n.owed)}</b> за изплащане</span>` : ''}</div>`; })()}
       </div>
       <div class="tags">
         ${p.id === currentUserId ? '<span class="badge you">Вие</span>' : ''}
@@ -4005,20 +4029,28 @@ async function staffNumbers(userId, rate) {
     supabase.from('staff_payments').select('amount,paid_on').eq('user_id', userId),
   ]);
   if (e1 || e2) throw (e1 || e2);
-  const blocks = expandEvents(evs || [], nEnd);
+  return staffCalc(evs || [], pays || [], rate);
+}
+function staffCalc(evs, pays, rate) {
+  const now = new Date();
+  const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const nStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const nEnd = new Date(now.getFullYear(), now.getMonth() + 2, 1);
+  const blocks = expandEvents(evs, nEnd);
   const h = (b) => (b.e - b.s) / 3600000;
   let all = 0, month = 0, monthPlan = 0, nextPlan = 0;
+  let cAll = 0, cMonth = 0, cMonthPlan = 0, cNext = 0;          // number of cleanings
   for (const b of blocks) {
-    if (b.e <= now) all += h(b);
-    if (b.s >= mStart && b.s < nStart) { monthPlan += h(b); if (b.e <= now) month += h(b); }
-    if (b.s >= nStart && b.s < nEnd) nextPlan += h(b);
+    if (b.e <= now) { all += h(b); cAll++; }
+    if (b.s >= mStart && b.s < nStart) { monthPlan += h(b); cMonthPlan++; if (b.e <= now) { month += h(b); cMonth++; } }
+    if (b.s >= nStart && b.s < nEnd) { nextPlan += h(b); cNext++; }
   }
   let paidAll = 0, paidMonth = 0;
-  for (const p of pays || []) {
+  for (const p of pays) {
     const amt = Number(p.amount) || 0; paidAll += amt;
     if (fromLocal(p.paid_on) >= mStart && fromLocal(p.paid_on) < nStart) paidMonth += amt;
   }
-  return { all, month, monthPlan, nextPlan, paidAll, paidMonth, owed: all * rate - paidAll,
+  return { all, month, monthPlan, nextPlan, cAll, cMonth, cMonthPlan, cNext, paidAll, paidMonth, owed: all * rate - paidAll,
     payMonth: monthPlan * rate, payNext: nextPlan * rate, mStart, nStart };
 }
 
@@ -4064,6 +4096,8 @@ function staffFileHTML(p, perms) {
         ${p.role !== 'owner' ? `<div class="field"><label>Мениджър</label><select class="input" name="manager"><option value="">— няма —</option></select></div>` : ''}
         <div class="actions"><button class="btn secondary" type="submit"><span class="label">Запази</span></button></div>
       </form>` : ''}
+      <div class="sf-group">Почиствания</div>
+      <div class="sf-stats" data-k="count"><div class="empty">Изчисляване…</div></div>
       <div class="sf-group">Часове</div>
       <div class="sf-stats" data-k="hours"><div class="empty">Изчисляване…</div></div>
       <div class="sf-group">Пари</div>
@@ -4153,6 +4187,10 @@ function mountStaffFile(root, p, perms) {
       const n = await staffNumbers(p.id, rate);
       const m = monthName(n.mStart), nx = monthName(n.nStart);
       const tile = (label, val, cls = '') => `<div class="stat ${cls}"><div class="lbl">${label}</div><div class="val">${val}</div></div>`;
+      const cnt = (v) => `${v} <small class="unit">${v === 1 ? 'почистване' : 'почиствания'}</small>`;
+      q('[data-k="count"]').innerHTML =
+        tile('Изпълнени — общо', cnt(n.cAll)) + tile(`Изпълнени — ${m}`, cnt(n.cMonth)) +
+        tile(`Прогноза — ${m}`, cnt(n.cMonthPlan)) + tile(`Прогноза — ${nx}`, cnt(n.cNext));
       q('[data-k="hours"]').innerHTML =
         tile('Изработени — общо', hrs(n.all)) + tile(`Изработени — ${m}`, hrs(n.month)) +
         tile(`Прогноза — ${m}`, hrs(n.monthPlan)) + tile(`Прогноза — ${nx}`, hrs(n.nextPlan));
@@ -4162,7 +4200,7 @@ function mountStaffFile(root, p, perms) {
         tile(`Прогноза заплата — ${m}`, eur(n.payMonth)) + tile(`Прогноза заплата — ${nx}`, eur(n.payNext)) +
         (n.owed < -0.004 ? tile('Аванс (надплатено)', eur(-n.owed), 'ok') : '');
     } catch (err) {
-      q('[data-k="hours"]').innerHTML = q('[data-k="money"]').innerHTML = `<div class="empty">Неуспешно изчисление. ${esc(authMessage(err))}</div>`;
+      q('[data-k="count"]').innerHTML = q('[data-k="hours"]').innerHTML = q('[data-k="money"]').innerHTML = `<div class="empty">Неуспешно изчисление. ${esc(authMessage(err))}</div>`;
     }
   })();
 
