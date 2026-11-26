@@ -977,6 +977,46 @@
   .sch-next { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; align-items: center; }
   .sch-next .lbl { width: 100%; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
   .sch-next .nd { font-family: var(--font-mono); font-size: 11.5px; padding: 3px 7px; border: 1px solid var(--ink); background: var(--paper); }
+
+  /* client cards: economics + margin meter (copied from the live CRM) */
+  .ccard { display: block !important; padding: 14px var(--gutter) 16px; }
+  .cc-head { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .cc-head .nm { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+  .vip { font-family: var(--font-ui); font-size: 9.5px; font-weight: 700; letter-spacing: .1em; color: var(--accent); border: 1.5px solid var(--accent); padding: 0 4px; margin-left: 8px; display: inline-block; transform: rotate(-3deg); line-height: 1.5; }
+  h2 .vip { font-size: 11px; vertical-align: 4px; }
+  .cstats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border: 1px solid var(--ink); margin-bottom: 12px; background: #fff; }
+  .cs-cell { padding: 8px 10px; min-width: 0; }
+  .cs-cell + .cs-cell { border-left: 1px solid var(--rule); }
+  .cs-cell .k { display: block; font-family: var(--font-ui); font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); line-height: 1.3; }
+  .cs-cell .v { display: block; font-family: var(--font-mono); font-weight: 700; font-size: 15px; margin-top: 4px; line-height: 1.25; overflow-wrap: anywhere; }
+  .cs-cell .v small { display: block; font-weight: 400; font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cs-cell.neg .v { color: var(--accent); }
+  @media (max-width: 700px) {
+    .cstats { grid-template-columns: 1fr 1fr; }
+    .cs-cell + .cs-cell { border-left: none; }
+    .cs-cell { border-bottom: 1px solid var(--rule); }
+    .cs-cell:nth-child(2n) { border-left: 1px solid var(--rule); }
+    .cs-cell:last-child { grid-column: 1 / -1; border-bottom: none; border-left: none; }
+  }
+  .mg { max-width: 260px; }
+  .mg.none { font-family: var(--font-body); font-style: italic; color: var(--muted); font-size: 13px; }
+  .mg-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .mg-v { font-family: var(--font-mono); font-size: 18px; font-weight: 700; }
+  .hbadge { font-family: var(--font-ui); text-transform: uppercase; letter-spacing: .06em; font-size: 9.5px; font-weight: 700; padding: 2px 6px; border: 1.5px solid var(--ink); white-space: nowrap; }
+  .hb-loss, .hb-bad { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .hb-weak { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+  .hb-ok { background: var(--ink); color: var(--paper); }
+  .hb-high { background: var(--paper); color: var(--ink); }
+  .mmeter { position: relative; height: 9px; border: 1px solid var(--ink); }
+  .mmeter .mb { position: absolute; top: 0; bottom: 0; border-right: 1px solid var(--ink); }
+  .mmeter .mb:nth-child(5) { border-right: none; }
+  .mmeter .mb::before { content: ''; position: absolute; inset: 0; background: var(--bg); opacity: .4; }
+  .mmeter .mb.on::before { opacity: 1; }
+  .mmeter .mk { position: absolute; top: -4px; bottom: -4px; width: 3px; margin-left: -1.5px; background: var(--ink); }
+  .b-loss { --bg: repeating-linear-gradient(-45deg, #CC0000 0 2px, #F7E1E1 2px 6px); }
+  .b-bad { --bg: #F7E1E1; } .b-weak { --bg: #F0E7D4; } .b-ok { --bg: #DAD9D2; } .b-high { --bg: #ECECE8; }
+  .mg-cap { font-family: var(--font-ui); font-size: 10.5px; color: var(--muted); margin-top: 7px; line-height: 1.3; }
+  .cc-sum .cstats { margin-bottom: 14px; }
 </style>
 </head>
 <body>
@@ -1131,7 +1171,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.22 — гъвкав интервал</div>
+      <div class="version">v0.23 — икономика на клиентите</div>
     </div>
   </aside>
 
@@ -2817,6 +2857,71 @@ function confirmDialog({ title = 'Сигурни ли сте?', text = '', ok = 
   });
 }
 
+
+/* ---------- Client economics (same model as the live CRM) ---------- */
+const BIZ = { wage: 13, overheadPerHour: 270 / 60, matPerHour: 1 };      // € per working hour
+const COST_PER_HOUR = BIZ.wage + BIZ.overheadPerHour + BIZ.matPerHour;   // 18.50 €
+function health(m) {
+  if (m < 0) return { k: 'loss', label: 'Губещо' };
+  if (m < 10) return { k: 'bad', label: 'Лош марж' };
+  if (m < 20) return { k: 'weak', label: 'Слаб марж' };
+  if (m < 35) return { k: 'ok', label: 'Здравословен' };
+  return { k: 'high', label: 'Много висок' };
+}
+const fmtHM = (h) => { if (!(h > 0)) return '—'; const t = Math.round(h * 60); const hh = Math.floor(t / 60), mm = t % 60; return (hh ? hh + ' ч' : '') + (hh && mm ? ' ' : '') + (mm ? mm + ' мин' : ''); };
+// One property → visits/month, hours per visit, price per visit, revenue/month
+function propEcon(p) {
+  if (!p || p.status !== 'active') return null;
+  const s = p.schedule;
+  const visits = s ? schPerMonth(s) : null;
+  const hours = s ? schDurH(s) : null;
+  const price = Number(p.price);
+  if (!(price > 0)) return { visits, hours, perVisit: null, revenue: 0 };
+  let perVisit = null, revenue = 0;
+  if (p.price_model === 'visit') { perVisit = price; revenue = visits ? price * visits : 0; }
+  else if (p.price_model === 'hour') { perVisit = hours ? price * hours : null; revenue = visits && hours ? price * hours * visits : 0; }
+  else { revenue = price; perVisit = visits ? price / visits : null; }
+  return { visits, hours, perVisit, revenue };
+}
+function clientEcon(c) {
+  const rows = (c.properties || []).map(propEcon).filter(Boolean);
+  let revenue = 0, visits = 0, hoursTot = 0, priceTot = 0, priced = 0;
+  for (const r of rows) {
+    revenue += r.revenue || 0;
+    if (r.visits && r.hours) { visits += r.visits; hoursTot += r.visits * r.hours; }
+    if (r.visits && r.perVisit) { priceTot += r.visits * r.perVisit; priced += r.visits; }
+  }
+  if (c.status !== 'active') revenue = 0;          // only active clients bring revenue
+  const hoursPerVisit = visits ? hoursTot / visits : (rows.find((r) => r.hours)?.hours || null);
+  const pricePerVisit = priced ? priceTot / priced : (rows.find((r) => r.perVisit)?.perVisit || null);
+  let margin = null;
+  if (pricePerVisit > 0 && hoursPerVisit > 0) margin = (pricePerVisit - hoursPerVisit * COST_PER_HOUR) / pricePerVisit * 100;
+  return { revenue, pricePerVisit, hoursPlan: hoursPerVisit, hoursActual: hoursPerVisit, actualBasis: 'plan', margin, nProps: rows.length };
+}
+const companyRevenue = () => clients.reduce((t, c) => t + clientEcon(c).revenue, 0);
+function marginMeterHTML(m, cap) {
+  if (m === null || !isFinite(m)) return '<div class="mg none">Няма цена или график</div>';
+  const H = health(m), lo = -10, hi = 50, pos = (v) => (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo) * 100;
+  const bands = [[lo, 0, 'loss'], [0, 10, 'bad'], [10, 20, 'weak'], [20, 35, 'ok'], [35, hi, 'high']];
+  return `<div class="mg"><div class="mg-top"><b class="mg-v">${Math.round(m)}%</b><span class="hbadge hb-${H.k}">${H.label}</span></div>
+    <div class="mmeter" role="img" aria-label="Марж ${Math.round(m)}%, ${H.label}">${bands.map((b) => `<i class="mb b-${b[2]}${b[2] === H.k ? ' on' : ''}" style="left:${pos(b[0])}%;width:${pos(b[1]) - pos(b[0])}%"></i>`).join('')}<i class="mk" style="left:${pos(m)}%"></i></div>
+    <div class="mg-cap">${cap}</div></div>`;
+}
+function clientCardStats(c, total) {
+  const e = clientEcon(c);
+  const share = total > 0 ? e.revenue / total * 100 : 0;
+  const without = total - e.revenue;
+  const cell = (k, v, cls = '') => `<div class="cs-cell ${cls}"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  return `<div class="cstats">
+      ${cell('Цена / почистване', e.pricePerVisit ? eur(e.pricePerVisit) : '—')}
+      ${cell('Време (план)', fmtHM(e.hoursPlan))}
+      ${cell('Време (реално)', e.hoursActual ? fmtHM(e.hoursActual) + '<small> засега = план</small>' : '—')}
+      ${cell('Дял от приходите', e.revenue ? `${share.toLocaleString('bg-BG', { maximumFractionDigits: 1 })}%<small> ${eur(e.revenue)}/мес</small>` : '—')}
+      ${cell('Приходи, ако напусне', e.revenue ? `${eur(without)}<small>/мес · −${eur(e.revenue)}</small>` : '—', e.revenue ? 'neg' : '')}
+    </div>
+    ${marginMeterHTML(e.margin, `${e.actualBasis === 'actual' ? 'по реално време' : 'по план'} · ${fmtHM(e.hoursPlan)}${e.nProps > 1 ? ` · средно за ${e.nProps} обекта` : ''}`)}`;
+}
+
 /* ---------- Clients & properties ---------- */
 const CL_STATUS = { prospect: 'Потенциален', active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
 const CL_STATUS_EMO = { prospect: sdot('warn'), active: sdot('ok'), paused: ic('pause'), ended: sdot('bad') };
@@ -2833,7 +2938,7 @@ const monthlyValue = (props) => (props || []).filter((p) => p.status === 'active
 async function loadClients() {
   $('c-add').hidden = !canManageClients();
   if (!clients.length) $('c-list').innerHTML = '<div class="empty">Зареждане…</div>';
-  const { data, error } = await supabase.from('clients').select('*, properties(id,name,status,price,price_model,address,neighbourhood,city,schedule_event_id)').order('name');
+  const { data, error } = await supabase.from('clients').select('*, properties(id,name,status,price,price_model,address,neighbourhood,city,schedule,schedule_event_id)').order('name');
   if (error) { $('c-list').innerHTML = `<div class="empty">Неуспешно зареждане. ${esc(authMessage(error))}</div>`; return; }
   clients = data || [];
   renderClients();
@@ -2847,20 +2952,21 @@ function renderClients() {
   const list = clients.filter((c) => (cFilter === 'all' || c.status === cFilter) &&
     (!q || [c.name, c.legal_name, c.contact_name, c.contact_phone, c.contact_email, c.eik, ...(c.properties || []).flatMap((p) => [p.name, p.address])]
       .some((v) => (v || '').toLowerCase().includes(q))))
-    .sort((a, b) => (order[a.status] - order[b.status]) || a.name.localeCompare(b.name, 'bg'));
+    .sort((a, b) => (order[a.status] - order[b.status]) || ((b.vip ? 1 : 0) - (a.vip ? 1 : 0)) || a.name.localeCompare(b.name, 'bg'));
   if (!list.length) { $('c-list').innerHTML = `<div class="empty">${q || cFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма клиенти. Натиснете +, за да добавите първия.'}</div>`; return; }
+  const total = companyRevenue();
   $('c-list').innerHTML = list.map((c) => {
-    const n = (c.properties || []).length, mv = monthlyValue(c.properties);
-    return `<button class="urow" data-id="${c.id}">
-      <div class="avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
-      <div style="min-width:0">
-        <div class="nm">${esc(c.name)}</div>
-        <div class="sub">${n} ${n === 1 ? 'обект' : 'обекта'}${c.contact_name ? ' · ' + esc(c.contact_name) : ''}${c.contact_phone ? ' · ' + esc(c.contact_phone) : ''}</div>
-      </div>
-      <div class="tags">
-        ${mv ? `<span class="badge">${eur(mv)}/мес</span>` : ''}
+    const n = (c.properties || []).length;
+    return `<button class="urow ccard" data-id="${c.id}">
+      <div class="cc-head">
+        <div class="avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
+        <div style="min-width:0">
+          <div class="nm">${esc(c.name)}${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
+          <div class="sub">${n} ${n === 1 ? 'обект' : 'обекта'}${c.contact_name ? ' · ' + esc(c.contact_name) : ''}</div>
+        </div>
         <span class="badge ${c.status === 'active' ? 'active' : c.status === 'ended' ? 'disabled' : 'pending'}">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}</span>
       </div>
+      ${clientCardStats(c, total)}
     </button>`;
   }).join('');
 }
@@ -2883,6 +2989,7 @@ function clientDataForm(c, manage) {
       <label><input type="radio" name="kind" value="person" ${c?.kind === 'person' ? 'checked' : ''}><span>${ic('user')} Физическо лице</span></label></div></div>
     <div class="field"><label>Име на клиента</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Тех Офис ООД / Мария Петрова"></div>
     <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(CL_STATUS).map(([k, l]) => `<option value="${k}" ${(c?.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <label class="check"><input type="checkbox" name="vip" ${c?.vip ? 'checked' : ''}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>VIP клиент</label>
     <div class="sf-group">Основен контакт</div>
     <div class="field"><label>Име</label><input class="input" name="contact_name" value="${v('contact_name')}" autocomplete="off"></div>
     <div class="two">
@@ -2927,7 +3034,7 @@ function renderClientFile(root, c, manage, tab = 'sum') {
   root.innerHTML = `
     <div class="pf-head">
       <div class="avatar pf-avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
-      <div style="min-width:0"><h2 class="sf-name">${esc(c.name)}</h2>
+      <div style="min-width:0"><h2 class="sf-name">${esc(c.name)}${c.vip ? '<span class="vip">VIP</span>' : ''}</h2>
         <div class="pf-sub">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}${c.legal_name ? ' · ' + esc(c.legal_name) : ''}</div></div>
     </div>
     <div class="sf-quick">
@@ -2939,9 +3046,10 @@ function renderClientFile(root, c, manage, tab = 'sum') {
     <div class="sf-tabs" style="grid-template-columns:repeat(${tabs.length},1fr)" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sf-tab${k === tab ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
     <div class="sf-alert" role="alert"></div>
     <div class="sf-pane" data-pane="sum" ${tab === 'sum' ? '' : 'hidden'}>
-      <div class="sf-stats">
+      <div class="cc-sum">${clientCardStats(c, companyRevenue())}</div>
+      <div class="sf-stats" style="margin-top:12px">
         <div class="stat"><div class="lbl">Обекти</div><div class="val">${active} активни${props.length !== active ? ` / ${props.length}` : ''}</div></div>
-        <div class="stat"><div class="lbl">Месечни договори</div><div class="val">${eur(monthlyValue(props))}</div></div>
+        <div class="stat"><div class="lbl">VIP</div><div class="val">${c.vip ? 'Да' : 'Не'}</div></div>
       </div>
       <dl class="pf-dl ev-v-dl">
         ${c.contact_name ? `<dt>Контакт</dt><dd>${esc(c.contact_name)}</dd>` : ''}
@@ -2999,7 +3107,7 @@ function bindClientForm(root, c) {
   f.addEventListener('submit', async (e) => {
     e.preventDefault();
     const v = (n) => (f[n]?.value || '').trim() || null;
-    const row = { kind: f.querySelector('input[name="kind"]:checked').value, name: v('name'), status: v('status') || 'active',
+    const row = { kind: f.querySelector('input[name="kind"]:checked').value, name: v('name'), status: v('status') || 'active', vip: !!f.vip?.checked,
       contact_name: v('contact_name'), contact_phone: v('contact_phone'), contact_email: v('contact_email'),
       legal_name: v('legal_name'), eik: v('eik'), vat_number: v('vat_number'), mol: v('mol'), billing_address: v('billing_address'), billing_email: v('billing_email'),
       source: v('source'), notes: v('notes') };
