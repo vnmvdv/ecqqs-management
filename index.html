@@ -1017,6 +1017,59 @@
   .b-bad { --bg: #F7E1E1; } .b-weak { --bg: #F0E7D4; } .b-ok { --bg: #DAD9D2; } .b-high { --bg: #ECECE8; }
   .mg-cap { font-family: var(--font-ui); font-size: 10.5px; color: var(--muted); margin-top: 7px; line-height: 1.3; }
   .cc-sum .cstats { margin-bottom: 14px; }
+
+  /* ---------- Clients: one row per property (table on desktop, cards on phone) ---------- */
+  #c-list { overflow: visible; }
+  .ptbl-wrap { overflow: auto; border: 1px solid var(--ink); background: var(--paper); max-height: calc(100dvh - 230px); }
+  .ptbl { border-collapse: separate; border-spacing: 0; min-width: 100%; font-family: var(--font-ui); font-size: 13px; }
+  .ptbl thead th { position: sticky; top: 0; z-index: 2; background: var(--paper-2); border-bottom: 1px solid var(--ink); padding: 10px 12px; text-align: left; white-space: nowrap;
+    font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); }
+  .ptbl td { padding: 11px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; white-space: nowrap; background: var(--paper); }
+  .ptbl tbody tr { cursor: pointer; }
+  .ptbl tbody tr:hover td { background: var(--paper-2); }
+  .ptbl th:first-child, .ptbl td.c-main { position: sticky; left: 0; z-index: 1; box-shadow: 1px 0 0 var(--rule); }
+  .ptbl thead th:first-child { z-index: 3; }
+  .ptbl tbody tr:hover td.c-main { box-shadow: inset 3px 0 0 var(--accent), 1px 0 0 var(--rule); }
+  .ptbl td small { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; white-space: normal; max-width: 220px; }
+  .ptbl td.num b, .ptbl td b { font-family: var(--font-mono); font-weight: 700; font-size: 13.5px; }
+  .ptbl b.neg { color: var(--accent); }
+  .ptbl .dim { color: var(--muted); }
+  .ptbl tr.dimrow td { color: var(--ink-2); }
+  .pc-client { display: flex; align-items: center; gap: 2px; }
+  .pc-cname { background: none; border: none; padding: 0; font-family: var(--font-body); font-weight: 600; font-size: 14.5px; color: var(--ink); cursor: pointer; text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .pc-cname:hover { text-decoration: underline; }
+  .pc-prop { font-size: 12px; color: var(--ink-2); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+  .pc-prop .ic { width: 14px; height: 14px; }
+  .pc-n { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--rule); padding: 1px 5px; }
+  .lnk { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; display: block; }
+  .lnk.sm { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
+  .lnk.addr { white-space: normal; max-width: 230px; }
+  .ct { font-weight: 600; font-size: 12px; }
+  .ct-ok { color: var(--ok); } .ct-soon { color: var(--warn); } .ct-over { color: var(--accent); } .ct-open, .ct-none { color: var(--ink-2); }
+  .pc-ppl { display: flex; gap: 3px; }
+  .avatar.xs { width: 24px; height: 24px; font-size: 10px; }
+  .mchip { font-size: 11.5px; padding: 3px 8px; border: 1px solid var(--ink); display: inline-block; white-space: nowrap; }
+  .mchip.m-invoice { background: var(--ink); color: var(--paper); }
+  .ptbl .mg { width: 190px; }
+
+  /* phone: each row becomes a card */
+  @media (max-width: 860px) {
+    .ptbl-wrap { border: none; background: transparent; max-height: none; overflow: visible; }
+    .ptbl, .ptbl tbody { display: block; min-width: 0; }
+    .ptbl thead { display: none; }
+    .ptbl tbody tr { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--ink); margin-bottom: 12px; background: var(--paper); }
+    .ptbl tbody tr:hover td { background: var(--paper); }
+    .ptbl td { display: block; white-space: normal; border-bottom: 1px solid var(--rule); padding: 9px 12px; min-width: 0; position: static; box-shadow: none !important; }
+    .ptbl td:not(.c-main):not(.c-st)::before { content: attr(data-l); display: block; font-size: 9.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+    .ptbl td:last-child { border-bottom: none; }
+    .ptbl td.c-main { grid-column: 1; padding-top: 12px; border-bottom: 1px solid var(--ink); }
+    .ptbl td.c-st { grid-column: 2; justify-self: stretch; text-align: right; padding-top: 14px; border-bottom: 1px solid var(--ink); border-left: none !important; }
+    .ptbl td.c-contact, .ptbl td.c-addr, .ptbl td.c-margin { grid-column: 1 / -1; border-left: none !important; }
+    .ptbl td small { max-width: none; }
+    .pc-cname { font-size: 18px; max-width: 100%; white-space: normal; }
+    .ptbl .mg { width: auto; max-width: 320px; }
+    .ptbl .lnk { padding: 2px 0; }
+  }
 </style>
 </head>
 <body>
@@ -1171,7 +1224,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.23 — икономика на клиентите</div>
+      <div class="version">v0.24 — клиенти по обекти</div>
     </div>
   </aside>
 
@@ -2938,39 +2991,96 @@ const monthlyValue = (props) => (props || []).filter((p) => p.status === 'active
 async function loadClients() {
   $('c-add').hidden = !canManageClients();
   if (!clients.length) $('c-list').innerHTML = '<div class="empty">Зареждане…</div>';
-  const { data, error } = await supabase.from('clients').select('*, properties(id,name,status,price,price_model,address,neighbourhood,city,schedule,schedule_event_id)').order('name');
+  const { data, error } = await supabase.from('clients').select('*, properties(*, property_staff(user_id))').order('name');
   if (error) { $('c-list').innerHTML = `<div class="empty">Неуспешно зареждане. ${esc(authMessage(error))}</div>`; return; }
   clients = data || [];
+  if (!Object.keys(staffNames).length) await loadStaffNames();
   renderClients();
 }
+let staffNames = {};
+async function loadStaffNames() {
+  const { data } = await supabase.from('profiles').select('id,fname,lname,email,is_dev');
+  staffNames = Object.fromEntries((data || []).map((u) => [u.id, u]));
+}
+function contractState(p) {
+  if (!p.contract_start && !p.contract_end) return { k: 'none', label: 'Без срок' };
+  if (!p.contract_end) return { k: 'open', label: 'Безсрочен' };
+  const today = ymd(new Date());
+  if (p.contract_end < today) return { k: 'over', label: 'Изтекъл' };
+  if (p.contract_end <= ymd(addDays(new Date(), 30))) return { k: 'soon', label: 'Изтича до 30 дни' };
+  return { k: 'ok', label: 'Действащ' };
+}
+const fmtD = (d) => d ? fromLocal(d).toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+
 function renderClients() {
   const q = $('c-search').value.trim().toLowerCase();
   const counts = { all: clients.length };
   clients.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
   document.querySelectorAll('#c-filters .chip').forEach((ch) => { ch.querySelector('.n').textContent = counts[ch.dataset.f] || ''; });
   const order = { active: 0, prospect: 1, paused: 2, ended: 3 };
-  const list = clients.filter((c) => (cFilter === 'all' || c.status === cFilter) &&
-    (!q || [c.name, c.legal_name, c.contact_name, c.contact_phone, c.contact_email, c.eik, ...(c.properties || []).flatMap((p) => [p.name, p.address])]
-      .some((v) => (v || '').toLowerCase().includes(q))))
-    .sort((a, b) => (order[a.status] - order[b.status]) || ((b.vip ? 1 : 0) - (a.vip ? 1 : 0)) || a.name.localeCompare(b.name, 'bg'));
-  if (!list.length) { $('c-list').innerHTML = `<div class="empty">${q || cFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма клиенти. Натиснете +, за да добавите първия.'}</div>`; return; }
   const total = companyRevenue();
-  $('c-list').innerHTML = list.map((c) => {
-    const n = (c.properties || []).length;
-    return `<button class="urow ccard" data-id="${c.id}">
-      <div class="cc-head">
-        <div class="avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
-        <div style="min-width:0">
-          <div class="nm">${esc(c.name)}${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
-          <div class="sub">${n} ${n === 1 ? 'обект' : 'обекта'}${c.contact_name ? ' · ' + esc(c.contact_name) : ''}</div>
-        </div>
-        <span class="badge ${c.status === 'active' ? 'active' : c.status === 'ended' ? 'disabled' : 'pending'}">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}</span>
-      </div>
-      ${clientCardStats(c, total)}
-    </button>`;
+  // one row per property (clients without properties get one row)
+  let rows = [];
+  for (const c of clients) {
+    if (cFilter !== 'all' && c.status !== cFilter) continue;
+    const props = (c.properties || []).slice().sort((x, y) => (x.status !== 'active') - (y.status !== 'active') || x.name.localeCompare(y.name, 'bg'));
+    const cEcon = clientEcon(c);
+    (props.length ? props : [null]).forEach((p, i) => rows.push({ c, p, i, n: props.length, cEcon }));
+  }
+  if (q) rows = rows.filter(({ c, p }) => [c.name, c.legal_name, c.contact_name, c.contact_phone, c.contact_email, c.eik,
+    p?.name, p?.address, p?.neighbourhood, p?.district, p?.city, p?.contact_name, p?.contact_phone].some((v) => (v || '').toLowerCase().includes(q)));
+  rows.sort((A, B) => (order[A.c.status] - order[B.c.status]) || ((B.c.vip ? 1 : 0) - (A.c.vip ? 1 : 0)) || A.c.name.localeCompare(B.c.name, 'bg') || (A.i - B.i));
+  if (!rows.length) { $('c-list').innerHTML = `<div class="empty">${q || cFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма клиенти. Натиснете +, за да добавите първия.'}</div>`; return; }
+
+  const stBadge = (c, p) => {
+    if (p && p.status !== 'active' && c.status === 'active') return `<span class="badge pending">${esc(PR_STATUS[p.status])}</span>`;
+    return `<span class="badge ${c.status === 'active' ? 'active' : c.status === 'ended' ? 'disabled' : 'pending'}">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}</span>`;
+  };
+  const td = (label, html, cls = '') => `<td class="${cls}" data-l="${label}">${html}</td>`;
+  const dash = '<span class="dim">—</span>';
+  const body = rows.map(({ c, p, n, cEcon }) => {
+    const e = p ? propEcon(p) : null;
+    const share = total > 0 && e?.revenue ? e.revenue / total * 100 : 0;
+    const leave = total - cEcon.revenue;
+    const hoursPlan = e?.hours || null;
+    let margin = null;
+    if (e?.perVisit > 0 && hoursPlan > 0) margin = (e.perVisit - hoursPlan * COST_PER_HOUR) / e.perVisit * 100;
+    const cName = p?.contact_name || c.contact_name, cPhone = p?.contact_phone || c.contact_phone, cMail = p?.contact_email || c.contact_email;
+    const addr = p ? [p.address, p.neighbourhood, p.district, p.city].filter(Boolean) : [];
+    const cs = p ? contractState(p) : null;
+    const next = p?.schedule ? schNextDates(p.schedule, 1)[0] : null;
+    const ppl = (p?.property_staff || []).map((x) => staffNames[x.user_id]).filter(Boolean);
+    return `<tr data-cid="${c.id}" ${p ? `data-pid="${p.id}"` : ''} class="${c.status !== 'active' ? 'dimrow' : ''}">
+      ${td('Клиент', `<div class="pc-client"><button type="button" class="pc-cname" data-open-client="${c.id}">${esc(c.name)}</button>${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
+        <div class="pc-prop">${p ? `${(PR_KIND[p.kind] || PR_KIND.other)[0]} ${esc(p.name)}` : '<span class="dim">без обект</span>'}${n > 1 ? `<span class="pc-n">${n} обекта</span>` : ''}</div>`, 'c-main')}
+      ${td('Статус', stBadge(c, p), 'c-st')}
+      ${td('Цена / почистване', e?.perVisit ? `<b>${eur(e.perVisit)}</b>${p.price_model !== 'visit' ? `<small>${eur(Number(p.price))} ${PRICE_MODEL[p.price_model]}</small>` : ''}` : dash, 'num')}
+      ${td('Време (план)', hoursPlan ? `<b>${fmtHM(hoursPlan)}</b>` : dash, 'num')}
+      ${td('Време (реално)', hoursPlan ? `<b>${fmtHM(hoursPlan)}</b><small>засега = план</small>` : dash, 'num')}
+      ${td('Дял от приходите', e?.revenue ? `<b>${share.toLocaleString('bg-BG', { maximumFractionDigits: 1 })}%</b><small>${eur(e.revenue)}/мес</small>` : dash, 'num')}
+      ${td('Приход, ако си тръгне', cEcon.revenue ? `<b class="neg">${eur(leave)}</b><small>/мес · −${eur(cEcon.revenue)}</small>` : dash, 'num')}
+      ${td('Контакт', (cName || cPhone || cMail) ? `${cName ? `<div>${esc(cName)}</div>` : ''}${cPhone ? `<a class="lnk" href="${telHref(cPhone)}">${esc(cPhone)}</a>` : ''}${cMail ? `<a class="lnk sm" href="mailto:${esc(cMail)}">${esc(cMail)}</a>` : ''}` : dash, 'c-contact')}
+      ${td('Договор', cs ? `<span class="ct ct-${cs.k}">${cs.label}</span>${p.contract_start || p.contract_end ? `<small>${fmtD(p.contract_start) || '…'} – ${fmtD(p.contract_end) || 'безсрочен'}</small>` : ''}` : dash)}
+      ${td('Адрес', addr.length ? `<a class="lnk addr" href="${mapsHref(addr.join(', '))}" target="_blank" rel="noopener">${esc(addr[0])}</a>${addr.length > 1 ? `<small>${esc(addr.slice(1).join(', '))}</small>` : ''}` : dash, 'c-addr')}
+      ${td('График', p?.schedule ? `<div>${esc(everyText(p.schedule.freq, p.schedule.interval))}${p.schedule.freq === 'weekly' && p.schedule.byweekday?.length ? ' — ' + p.schedule.byweekday.map((d) => WD_SHORT[d]).join(', ') : ''}</div><small>${esc(p.schedule.start_time)}–${esc(p.schedule.end_time)}${next ? ' · следващо ' + next.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' }) : ''}${p.schedule_event_id ? ' · в календара' : ''}</small>` : (p?.schedule_note ? `<small>${esc(p.schedule_note)}</small>` : dash))}
+      ${td('Хора', ppl.length ? `<div class="pc-ppl">${ppl.map((u) => `<span class="avatar xs" title="${esc(fullName(u) || u.email)}">${esc(initials(u))}</span>`).join('')}</div><small>${esc(ppl.map((u) => u.fname || u.email).join(', '))}</small>` : ((p?.property_staff || []).length ? `<small>${p.property_staff.length} души</small>` : dash))}
+      ${td('Марж', p ? marginMeterHTML(margin, `по план · ${fmtHM(hoursPlan)}`) : dash, 'c-margin')}
+      ${td('Плащане', p ? `<span class="mchip ${p.invoice ? 'm-invoice' : ''}">${esc(PAY_METHOD[p.payment_method] || '')}</span>${p.invoice ? '<small>с фактура</small>' : '<small>без фактура</small>'}` : dash)}
+    </tr>`;
   }).join('');
+  $('c-list').innerHTML = `<div class="ptbl-wrap"><table class="ptbl">
+    <thead><tr><th>Клиент</th><th>Статус</th><th>Цена / почистване</th><th>Време (план)</th><th>Време (реално)</th><th>Дял от приходите</th><th>Приход, ако си тръгне</th><th>Контакт</th><th>Договор</th><th>Адрес</th><th>График</th><th>Хора</th><th>Марж</th><th>Плащане</th></tr></thead>
+    <tbody>${body}</tbody></table></div>`;
 }
-$('c-list').addEventListener('click', (e) => { const r = e.target.closest('.urow'); if (r) openClient(r.dataset.id); });
+$('c-list').addEventListener('click', (e) => {
+  if (e.target.closest('a')) return;                     // phone, email, map links work as links
+  const cBtn = e.target.closest('[data-open-client]');
+  if (cBtn) { openClient(cBtn.dataset.openClient); return; }
+  const tr = e.target.closest('tr[data-cid]'); if (!tr) return;
+  const c = clients.find((x) => x.id === tr.dataset.cid); if (!c) return;
+  if (tr.dataset.pid) openProperty(c, tr.dataset.pid); else openClient(c.id);
+});
+
 $('c-search').addEventListener('input', renderClients);
 document.querySelectorAll('#c-filters .chip').forEach((ch) => ch.addEventListener('click', () => {
   cFilter = ch.dataset.f;
@@ -3095,7 +3205,7 @@ function clAlert(root, type, text) {
 }
 
 async function refreshClient(id, tab) {
-  const { data } = await supabase.from('clients').select('*, properties(*)').eq('id', id).maybeSingle();
+  const { data } = await supabase.from('clients').select('*, properties(*, property_staff(user_id))').eq('id', id).maybeSingle();
   if (!data) return;
   const i = clients.findIndex((c) => c.id === id); if (i >= 0) clients[i] = data; else clients.push(data);
   clCurrent = data; renderClients();
@@ -3289,7 +3399,7 @@ async function openProperty(c, id) {
   const prevState = id ? { schedule: s, staff: [...sel].sort() } : null;
   $('pr-root').innerHTML = `
     <h2>${id ? esc(p.name) : 'Нов обект'}</h2>
-    <p class="lead">${esc(c.name)}</p>
+    <p class="lead"><button type="button" class="link" data-act="open-client">${ic('user')} ${esc(c.name)}${c.vip ? ' · VIP' : ''}</button></p>
     ${id ? `<div class="sf-quick">
       ${p.address ? `<a class="sq-btn" href="${mapsHref([p.address, p.neighbourhood, p.city].filter(Boolean).join(', '))}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">${ic('map')}</span></a>` : ''}
       ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>` : ''}
@@ -3498,6 +3608,7 @@ async function openProperty(c, id) {
   };
   f.querySelector('[data-act="del"]')?.addEventListener('click', delProp);
   root.querySelector('[data-act="del-prop"]')?.addEventListener('click', delProp);
+  root.querySelector('[data-act="open-client"]')?.addEventListener('click', () => { $('dlg-prop').close(); openClient(c.id); });
   $('dlg-prop').showModal();
 }
 
