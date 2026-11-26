@@ -611,7 +611,8 @@
   .cal-in-next { animation: calInNext .26s cubic-bezier(.2,.7,.2,1); }
   .cal-in-prev { animation: calInPrev .26s cubic-bezier(.2,.7,.2,1); }
   .cal-in-fade { animation: calInFade .22s ease-out; }
-  #cal .fc-view-harness { overflow: hidden; }
+  #cal .fc-view-harness { will-change: transform; }
+  #cal { overflow: hidden; touch-action: pan-y pinch-zoom; }
   #sec-calendar { overflow-x: hidden; }
 
   /* ---------- Toast ---------- */
@@ -2106,49 +2107,108 @@ async function showCalendar() {
   setCalTitle(); markView();
 }
 
-/* Slide/fade animation so moving between days/weeks/months is obvious */
-let calDir = 0, calFirstPaint = true;
+/* Moving between days/weeks/months: carousel-style slide (buttons) and finger-following swipe (touch) */
+let calDir = 0, calFirstPaint = true, calSliding = false, calSkipAnim = false;
+const nextFrame = () => new Promise((r) => requestAnimationFrame(() => r()));
+const harness = () => $('cal').querySelector('.fc-view-harness');
 function animateCal() {
   if (calFirstPaint) { calFirstPaint = false; calDir = 0; return; }
+  if (calSkipAnim) { calSkipAnim = false; return; }     // slideNav animates this change itself
   const cls = calDir > 0 ? 'cal-in-next' : calDir < 0 ? 'cal-in-prev' : 'cal-in-fade';
   calDir = 0;
-  [$('cal').querySelector('.fc-view-harness'), $('cal-title')].forEach((el) => {
+  [harness(), $('cal-title')].forEach((el) => {
     if (!el) return;
     el.classList.remove('cal-in-next', 'cal-in-prev', 'cal-in-fade');
-    void el.offsetWidth; // restart the animation
+    void el.offsetWidth;
     el.classList.add(cls);
   });
 }
+function titleIn(dir) {
+  const t = $('cal-title');
+  t.classList.remove('cal-in-next', 'cal-in-prev', 'cal-in-fade'); void t.offsetWidth;
+  t.classList.add(dir > 0 ? 'cal-in-next' : 'cal-in-prev');
+}
+// Slide the current period out (continuing from wherever the finger left it), then the new one in from the other side
+async function slideNav(dir) {
+  if (!calendar || calSliding) return;
+  calSliding = true;
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let h = harness(); const w = h.offsetWidth || window.innerWidth;
+  if (!reduce) {
+    h.style.transition = 'transform .17s cubic-bezier(.4,0,1,1), opacity .17s';
+    h.style.transform = `translateX(${dir > 0 ? -w : w}px)`;
+    h.style.opacity = '.25';
+    await new Promise((r) => setTimeout(r, 170));
+  }
+  calSkipAnim = true;
+  if (dir > 0) calendar.next(); else calendar.prev();
+  await nextFrame();
+  h = harness();
+  if (!reduce) {
+    h.style.transition = 'none';
+    h.style.transform = `translateX(${dir > 0 ? w * 0.6 : -w * 0.6}px)`;
+    h.style.opacity = '.25';
+    void h.offsetWidth;
+    h.style.transition = 'transform .28s cubic-bezier(.15,.85,.25,1), opacity .22s ease-out';
+    h.style.transform = ''; h.style.opacity = '';
+    titleIn(dir);
+    await new Promise((r) => setTimeout(r, 290));
+  }
+  h.style.transition = '';
+  calSliding = false;
+}
 function calGo(dir) {
   if (!calendar) return;
-  calDir = dir;
-  if (dir > 0) calendar.next(); else if (dir < 0) calendar.prev();
-  else {
-    const before = calendar.view.currentStart.getTime();
-    calendar.today();
-    if (calendar.view.currentStart.getTime() === before) { calDir = 0; animateCal(); } // already on today: still give feedback
-  }
+  if (dir) return slideNav(dir);
+  const before = calendar.view.currentStart.getTime();
+  calDir = 0; calendar.today();
+  if (calendar.view.currentStart.getTime() === before) animateCal();   // already on today: still give feedback
 }
 $('cal-prev').addEventListener('click', () => calGo(-1));
 $('cal-next').addEventListener('click', () => calGo(1));
 $('cal-today').addEventListener('click', () => calGo(0));
 document.querySelectorAll('.cal-views [data-view]').forEach((b) => b.addEventListener('click', () => { calDir = 0; calendar?.changeView(b.dataset.view); }));
-// Swipe left/right on the calendar to go forward/back (phones & tablets)
+
+// Finger-following swipe (phones & tablets)
 (() => {
-  let x0 = null, y0 = null, t0 = 0;
   const el = $('cal');
+  let x0 = 0, y0 = 0, t0 = 0, lastX = 0, lastT = 0, vx = 0, mode = null; // mode: null | 'h' | 'v' | 'off'
+  const busyGesture = () => document.querySelector('#cal .fc-event-dragging, #cal .fc-event-resizing, #cal .fc-highlight, #cal .fc-event-mirror');
   el.addEventListener('touchstart', (e) => {
-    if (e.touches.length !== 1) { x0 = null; return; }
-    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+    if (e.touches.length !== 1 || calSliding) { mode = 'off'; return; }
+    x0 = lastX = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = lastT = Date.now(); vx = 0; mode = null;
   }, { passive: true });
-  el.addEventListener('touchend', (e) => {
-    if (x0 === null) return;
-    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
-    x0 = null;
-    if (Date.now() - t0 > 600) return;                 // slow drags are for selecting/moving events
-    if (document.querySelector('#cal .fc-event-dragging, #cal .fc-event-resizing, #cal .fc-highlight')) return;
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) calGo(dx < 0 ? 1 : -1);
-  }, { passive: true });
+  el.addEventListener('touchmove', (e) => {
+    if (mode === 'off' || mode === 'v') return;
+    const x = e.touches[0].clientX, y = e.touches[0].clientY, dx = x - x0, dy = y - y0;
+    if (!mode) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if (busyGesture()) { mode = 'off'; return; }
+      mode = Math.abs(dx) > Math.abs(dy) * 1.2 ? 'h' : 'v';
+      if (mode !== 'h') return;
+    }
+    e.preventDefault();                                   // horizontal swipe: don't scroll the page
+    const now = Date.now(); vx = (x - lastX) / Math.max(1, now - lastT); lastX = x; lastT = now;
+    const h = harness(); const w = h.offsetWidth || window.innerWidth;
+    h.style.transition = 'none';
+    h.style.transform = `translateX(${dx}px)`;
+    h.style.opacity = String(1 - Math.min(0.55, Math.abs(dx) / w * 0.8));
+  }, { passive: false });
+  const finish = () => {
+    if (mode !== 'h') { mode = null; return; }
+    mode = null;
+    const h = harness(); const w = h.offsetWidth || window.innerWidth;
+    const dx = lastX - x0;
+    const flick = Math.abs(vx) > 0.45 && Math.abs(dx) > 24;
+    if (Math.abs(dx) > w * 0.28 || flick) slideNav(dx < 0 ? 1 : -1);
+    else { // not far enough: spring back
+      h.style.transition = 'transform .25s cubic-bezier(.2,.9,.3,1.15), opacity .2s';
+      h.style.transform = ''; h.style.opacity = '';
+      setTimeout(() => { h.style.transition = ''; }, 260);
+    }
+  };
+  el.addEventListener('touchend', finish, { passive: true });
+  el.addEventListener('touchcancel', finish, { passive: true });
 })();
 $('cal-people').addEventListener('change', () => { ls.set(CAL_PEOPLE_KEY, $('cal-people').value); calendar?.refetchEvents(); });
 $('cal-add').addEventListener('click', () => {
