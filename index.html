@@ -1055,6 +1055,48 @@
   .pc-cname:hover { text-decoration: underline; }
   .pc-prop { font-size: 12px; color: var(--ink-2); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
   .pc-prop .ic { width: 14px; height: 14px; }
+
+  /* finances */
+  .fin-bar { justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .fmonth { display: flex; align-items: center; gap: 6px; }
+  .fm-label { background: none; border: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; min-width: 160px; text-align: center; cursor: pointer; color: var(--ink); text-transform: capitalize; }
+  #f-src .chip { padding: 0 12px; font-size: 13px; }
+  .f-kpis { grid-template-columns: repeat(4, 1fr); margin-bottom: 10px; }
+  .f-kpis .val { font-size: 22px; }
+  .fdelta { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 3px; font-family: var(--font-ui); }
+  .fdelta.up { color: var(--ok); } .fdelta.down { color: var(--accent); }
+  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .fcard { min-height: 0; margin-top: 12px; }
+  .fgrid .fcard { margin-top: 0; }
+  .fchart { width: 100%; height: auto; display: block; }
+  .fchart .g { stroke: var(--rule); stroke-width: 1; } .fchart .t { font-size: 10.5px; fill: var(--muted); font-family: var(--font-ui); text-transform: capitalize; }
+  .fchart .t.on { fill: var(--ink); font-weight: 700; } .fchart .rv { fill: var(--ink); } .fchart .cs { fill: #8C8C86; } .fchart .sel { fill: var(--ink); opacity: .05; }
+  .flegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin-bottom: 6px; font-family: var(--font-ui); }
+  .flegend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; } .flegend i.rv { background: var(--ink); } .flegend i.cs { background: #8C8C86; }
+  .pbreak.flat { border: 0; padding: 0; margin: 0; background: none; }
+  .pb-row em { font-style: normal; color: var(--muted); font-size: 11.5px; }
+  .pb-row.est span { color: var(--muted); }
+  .pb-row.sum0 { font-weight: 600; border-bottom: 1px solid var(--ink); }
+  .pb-row.sum.neg b { color: var(--accent); }
+  .hbar { display: grid; grid-template-columns: minmax(0, 1.3fr) 1fr auto; gap: 10px; align-items: center; padding: 5px 0; font-size: 13px; }
+  .hbar .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .hbar .t { height: 10px; background: var(--paper-2); } .hbar .t i { display: block; height: 100%; background: var(--ink); }
+  .hbar .v { font-variant-numeric: tabular-nums; font-weight: 600; text-align: right; min-width: 70px; } .hbar .v small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; }
+  .owners { display: grid; gap: 8px; }
+  .owner { border: 1px solid var(--rule); padding: 10px 12px; background: var(--paper); display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+  .owner small { display: block; color: var(--muted); font-size: 11.5px; } .owner > small { grid-column: 1 / -1; }
+  .owner .ov { font-family: var(--font-mono); font-size: 20px; font-weight: 700; color: var(--ok); }
+  .ftbl-wrap { overflow-x: auto; }
+  .ftbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .ftbl th { text-align: left; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 6px 8px; border-bottom: 2px solid var(--ink); white-space: nowrap; }
+  .ftbl td { padding: 7px 8px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+  .ftbl td small { display: block; color: var(--muted); font-size: 11.5px; }
+  .ftbl .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; } .ftbl .neg { color: var(--accent); font-weight: 600; }
+  .warnline { color: var(--warn); }
+  .fset summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+  .fset summary h2 { margin: 0; } .fset[open] summary { margin-bottom: 12px; }
+  .exp-form { margin-bottom: 10px; }
+  @media (max-width: 820px) { .fgrid { grid-template-columns: 1fr; } .f-kpis { grid-template-columns: 1fr 1fr; } .f-kpis .val { font-size: 18px; } .fm-label { min-width: 0; font-size: 18px; } }
   .pc-spec { font-size: 11.5px; color: var(--muted); margin-top: 3px; white-space: normal; line-height: 1.35; }
   .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 14px; }
   .spec-bools { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 0 10px; }
@@ -1310,7 +1352,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.30 — видове обекти и описание</div>
+      <div class="version">v0.31 — финанси</div>
     </div>
   </aside>
 
@@ -1376,6 +1418,23 @@
         </div>
       </div>
       <div class="ulist" id="c-list" aria-live="polite"></div>
+    </section>
+
+    <!-- Finances -->
+    <section class="sec" id="sec-finances" hidden>
+      <header><h1>Финанси</h1></header>
+      <div class="toolbar sqrow fin-bar">
+        <div class="fmonth">
+          <button class="sq-btn" id="f-prev" title="Предишен месец" aria-label="Предишен месец"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 6l-6 6 6 6"/></svg></span></button>
+          <button class="fm-label" id="f-today" title="Към текущия месец"><span id="f-month">—</span></button>
+          <button class="sq-btn" id="f-next" title="Следващ месец" aria-label="Следващ месец"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></span></button>
+        </div>
+        <div class="chips" id="f-src" role="group" aria-label="Кои почиствания">
+          <button class="chip active" data-src="done" aria-pressed="true">Изпълнени</button>
+          <button class="chip" data-src="plan" aria-pressed="false">С прогноза</button>
+        </div>
+      </div>
+      <div id="f-body"></div>
     </section>
 
     <!-- Users -->
@@ -2039,6 +2098,7 @@ const SECTIONS = [
   { id: 'dashboard', label: 'Табло', roles: null },
   { id: 'calendar', label: 'Календар', roles: ['owner', 'manager', 'cleaner'] },
   { id: 'clients', label: 'Клиенти', roles: ['owner', 'manager', 'accountant'] },
+  { id: 'finances', label: 'Финанси', roles: ['owner', 'accountant'] },
   { id: 'staff', label: 'Персонал', labelFor: { cleaner: 'Моето досие' }, roles: ['owner', 'manager', 'cleaner'] },
   { id: 'users', label: 'Потребители', roles: ['owner', 'manager'] },
 ];
@@ -2096,6 +2156,7 @@ function go(id) {
   if (id === 'staff') loadStaff();
   if (id === 'calendar') showCalendar();
   if (id === 'clients') loadClients();
+  if (id === 'finances') loadFinances();
   window.scrollTo({ top: 0 });
 }
 
@@ -2143,6 +2204,7 @@ async function enterApp(session) {
   $('u-add').hidden = !isOwner();
   show('view-app');
   updateDevUI();
+  loadFinanceSettings();
   go(ls.get(SECTION_KEY) || 'dashboard');
   if (['owner', 'manager'].includes(me?.role)) refreshPendingBadge();
 }
@@ -3074,7 +3136,7 @@ function leaveBarHTML(rev, total) {
 
 /* ---------- Client economics (same model as the live CRM) ---------- */
 const BIZ = { wage: 13, overheadPerHour: 270 / 60, matPerHour: 1, corpTax: 10 };   // € per working hour, corp. tax %
-const COST_PER_HOUR = BIZ.wage + BIZ.overheadPerHour + BIZ.matPerHour;   // 18.50 €
+const costPerHour = () => BIZ.wage + BIZ.overheadPerHour + BIZ.matPerHour;   // 18.50 € with the default model
 function health(m) {
   if (m < 0) return { k: 'loss', label: 'Губещо' };
   if (m < 10) return { k: 'bad', label: 'Лош марж' };
@@ -3109,7 +3171,7 @@ function clientEcon(c) {
   const hoursPerVisit = visits ? hoursTot / visits : (rows.find((r) => r.hours)?.hours || null);
   const pricePerVisit = priced ? priceTot / priced : (rows.find((r) => r.perVisit)?.perVisit || null);
   let margin = null;
-  if (pricePerVisit > 0 && hoursPerVisit > 0) margin = (pricePerVisit - hoursPerVisit * COST_PER_HOUR) / pricePerVisit * 100;
+  if (pricePerVisit > 0 && hoursPerVisit > 0) margin = (pricePerVisit - hoursPerVisit * costPerHour()) / pricePerVisit * 100;
   return { revenue, pricePerVisit, hoursPlan: hoursPerVisit, hoursActual: hoursPerVisit, actualBasis: 'plan', margin, nProps: rows.length };
 }
 const companyRevenue = () => clients.reduce((t, c) => t + clientEcon(c).revenue, 0);
@@ -3263,7 +3325,7 @@ function renderClients() {
     const leave = total - cEcon.revenue;
     const hoursPlan = e?.hours || null;
     let margin = null;
-    if (e?.perVisit > 0 && hoursPlan > 0) margin = (e.perVisit - hoursPlan * COST_PER_HOUR) / e.perVisit * 100;
+    if (e?.perVisit > 0 && hoursPlan > 0) margin = (e.perVisit - hoursPlan * costPerHour()) / e.perVisit * 100;
     const cName = p?.contact_name || c.contact_name, cPhone = p?.contact_phone || c.contact_phone, cMail = p?.contact_email || c.contact_email;
     const addr = p ? [p.address, p.neighbourhood, p.district, p.city].filter(Boolean) : [];
     const cs = p ? contractState(p) : null;
@@ -4108,6 +4170,281 @@ const telHref = (n) => 'tel:' + String(n || '').replace(/[^\d+]/g, '');
 const viberHref = (n) => { let d = String(n || '').replace(/[^\d+]/g, ''); if (d.startsWith('0')) d = '+359' + d.slice(1); return 'viber://chat?number=' + encodeURIComponent(d); };
 
 let sEditing = null;
+
+/* ======================= Finances ======================= */
+const FIN = { social: 190, accounting: 50, solutions: 30, corpTax: 10, divTax: 5, loadH: 60, matPerHour: 1, owners: [{ name: 'Вихрен', pct: 51 }, { name: 'Кристиян', pct: 49 }] };
+const EXP_CAT = { materials: 'Материали (кърпи, микрофибър…)', supplies: 'Препарати', transport: 'Транспорт / гориво', equipment: 'Оборудване', marketing: 'Реклама', rent: 'Наем', fees: 'Такси и банка', other: 'Друго' };
+const canFinance = () => ['owner', 'accountant'].includes(me?.role) && me?.status === 'active';
+function applyFinanceSettings(v) {
+  Object.assign(FIN, v || {});
+  BIZ.overheadPerHour = (Number(FIN.social) + Number(FIN.accounting) + Number(FIN.solutions)) / (Number(FIN.loadH) || 60);
+  BIZ.corpTax = Number(FIN.corpTax) || 0;
+  BIZ.matPerHour = Number(FIN.matPerHour) || 0;
+}
+async function loadFinanceSettings() {
+  if (!['owner', 'manager', 'accountant'].includes(me?.role)) return;
+  const { data } = await supabase.from('app_settings').select('value').eq('key', 'finance').maybeSingle();
+  if (data?.value) applyFinanceSettings(data.value);
+}
+const ymOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
+const ymAdd = (ym, n) => { const [y, m] = ym.split('-').map(Number); return ymOf(new Date(y, m - 1 + n, 1)); };
+const ymStart = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, 1); };
+const ymLabel = (ym) => ymStart(ym).toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' }).replace(' г.', '');
+const ymShort = (ym) => ymStart(ym).toLocaleDateString('bg-BG', { month: 'short' }).replace('.', '');
+const eur0 = (n) => (n < 0 ? '−' : '') + Math.round(Math.abs(n || 0)).toLocaleString('bg-BG') + ' €';
+
+let FD = null;                       // loaded finance data
+let finYM = ymOf(new Date()), finSrc = 'done';
+async function loadFinances() {
+  const box = $('f-body');
+  if (!FD) box.innerHTML = '<div class="empty">Зареждане…</div>';
+  try {
+    await waitFor(() => window.rrule);
+    const [st, ev, pr, cl, sd, pf, cp, sp, ex] = await Promise.all([
+      supabase.from('app_settings').select('value').eq('key', 'finance').maybeSingle(),
+      supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,property_id,event_assignees(user_id)'),
+      supabase.from('properties').select('id,client_id,name,kind,price,price_model,schedule,status'),
+      supabase.from('clients').select('id,name'),
+      supabase.from('staff_details').select('id,hourly_rate'),
+      supabase.from('profiles').select('id,fname,lname,email'),
+      supabase.from('client_payments').select('client_id,amount,paid_on'),
+      supabase.from('staff_payments').select('user_id,amount,paid_on'),
+      supabase.from('expenses').select('*').order('spent_on', { ascending: false }),
+    ]);
+    const err = [ev, pr, cl, cp, sp, ex].find((r) => r.error)?.error;
+    if (err) throw err;
+    if (st.data?.value) applyFinanceSettings(st.data.value);
+    const rate = Object.fromEntries((sd.data || []).map((r) => [r.id, Number(r.hourly_rate ?? 13)]));
+    const props = Object.fromEntries((pr.data || []).map((p) => [p.id, p]));
+    const cname = Object.fromEntries((cl.data || []).map((c) => [c.id, c.name]));
+    const now = new Date();
+    const horizon = ymStart(ymAdd(ymOf(now), 4));
+    const blocks = expandEvents(ev.data || [], horizon).map((b) => {
+      const h = (b.e - b.s) / 3600000, who = (b.r.event_assignees || []).map((a) => a.user_id);
+      const prop = b.r.property_id ? props[b.r.property_id] : null, pv = prop ? perVisitOf(prop) : null;
+      return { ym: ymOf(b.s), done: b.e <= now, h, ph: h * who.length, wage: who.reduce((t, u) => t + h * (rate[u] ?? 13), 0),
+        rev: pv || 0, prop, unassigned: !who.length && !!prop, unpriced: !!prop && !pv };
+    });
+    const first = [...blocks.map((b) => b.ym), ...(cp.data || []).map((x) => x.paid_on.slice(0, 7)), ...(ex.data || []).map((x) => x.spent_on.slice(0, 7))].sort()[0] || ymOf(now);
+    FD = { blocks, props, cname, now, first, cpays: cp.data || [], spays: sp.data || [], exps: ex.data || [], names: Object.fromEntries((pf.data || []).map((p) => [p.id, fullName(p) || p.email])) };
+    renderFinances();
+  } catch (e) {
+    box.innerHTML = `<div class="empty">Финансите не могат да се заредят. ${esc(authMessage(e))}</div>`;
+  }
+}
+
+function finCalc(ym, src = finSrc) {
+  const cur = ymOf(FD.now), future = ym > cur;
+  const use = (b) => b.ym === ym && (src === 'plan' || future || b.done);
+  const set = FD.blocks.filter(use);
+  const rev = set.reduce((t, b) => t + b.rev, 0), wages = set.reduce((t, b) => t + b.wage, 0);
+  const hours = set.reduce((t, b) => t + b.ph, 0), n = set.filter((b) => b.prop).length;
+  const live = ym >= FD.first;
+  const ex = FD.exps.filter((e) => e.spent_on.slice(0, 7) === ym);
+  const byCat = {}; ex.forEach((e) => { byCat[e.category] = (byCat[e.category] || 0) + Number(e.amount); });
+  const lines = [
+    { l: 'Заплати на хигиенистите', rule: `${hrs(hours)} работа по ставките им`, v: wages },
+    { l: 'Социални осигуровки', rule: 'фиксирано месечно', v: live ? +FIN.social : 0 },
+    { l: 'Счетоводител', rule: 'фиксирано месечно', v: live ? +FIN.accounting : 0 },
+    { l: 'Препарати', rule: 'фиксирано месечно', v: live ? +FIN.solutions : 0 },
+  ];
+  if (byCat.materials) lines.push({ l: EXP_CAT.materials, rule: `${ex.filter((e) => e.category === 'materials').length} записа`, v: byCat.materials });
+  else if (hours) lines.push({ l: EXP_CAT.materials, rule: `оценка ${eur(FIN.matPerHour)}/ч — няма записани`, v: hours * FIN.matPerHour, est: true });
+  for (const [k, v] of Object.entries(byCat)) if (k !== 'materials') lines.push({ l: EXP_CAT[k] || k, rule: `${ex.filter((e) => e.category === k).length} записа`, v });
+  const costs = lines.reduce((t, x) => t + x.v, 0), pre = rev - costs, corp = pre > 0 ? pre * FIN.corpTax / 100 : 0, dist = pre - corp;
+  const owners = (FIN.owners || []).map((o) => { const share = dist > 0 ? dist * o.pct / 100 : 0, dt = share * FIN.divTax / 100; return { ...o, share, dt, net: share - dt }; });
+  const allMonth = FD.blocks.filter((b) => b.ym === ym);
+  const pending = allMonth.reduce((t, b) => t + b.rev, 0) - rev;
+  return { ym, live, future, rev, wages, hours, n, lines, costs, pre, corp, dist, owners, set, ex, pending,
+    unassigned: set.filter((b) => b.unassigned).length, unpriced: set.filter((b) => b.unpriced).length };
+}
+
+function finChart(series) {
+  const W = 720, H = 230, L = 46, R = 8, T = 12, B = 26;
+  const mx0 = Math.max(1, ...series.map((d) => Math.max(d.rev, d.costs))) * 1.08;
+  const p = Math.pow(10, Math.floor(Math.log10(mx0))), f = mx0 / p, mx = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+  const y = (v) => T + (H - T - B) * (1 - Math.max(0, v) / mx), band = (W - L - R) / series.length, bw = Math.min(22, band * .3);
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="fchart" role="img" aria-label="Приход и разходи по месеци">`;
+  for (let i = 0; i <= 4; i++) { const v = mx / 4 * i, yy = y(v); s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g"/><text x="${L - 7}" y="${yy + 3.5}" text-anchor="end" class="t">${Math.round(v).toLocaleString('bg-BG')}</text>`; }
+  series.forEach((d, i) => {
+    const cx = L + band * i + band / 2, sel = d.ym === finYM, op = d.future ? .38 : 1;
+    if (sel) s += `<rect x="${cx - band / 2 + 2}" y="${T}" width="${band - 4}" height="${H - T - B}" class="sel"/>`;
+    s += `<g class="fbar" data-ym="${d.ym}" style="cursor:pointer"><rect x="${cx - band / 2}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent"/>
+      <rect x="${cx - bw - 1}" y="${y(d.rev)}" width="${bw}" height="${y(0) - y(d.rev)}" class="rv" opacity="${op}"><title>${ymLabel(d.ym)} · приход ${eur(d.rev)}</title></rect>
+      <rect x="${cx + 1}" y="${y(d.costs)}" width="${bw}" height="${y(0) - y(d.costs)}" class="cs" opacity="${op}"><title>${ymLabel(d.ym)} · разходи ${eur(d.costs)}</title></rect></g>
+      <text x="${cx}" y="${H - 8}" text-anchor="middle" class="t${sel ? ' on' : ''}">${ymShort(d.ym)}</text>`;
+  });
+  return s + '</svg>';
+}
+
+function renderFinances() {
+  if (!FD) return;
+  const c = finCalc(finYM), pm = finCalc(ymAdd(finYM, -1)), cur = ymOf(FD.now);
+  $('f-month').textContent = ymLabel(finYM);
+  document.querySelectorAll('#f-src button').forEach((b) => { const on = b.dataset.src === finSrc; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+  const delta = (a, b) => (!b ? '' : `<small class="fdelta ${a >= b ? 'up' : 'down'}">${a >= b ? '▲' : '▼'} ${Math.abs(Math.round((a - b) / Math.abs(b) * 100))}% спрямо ${ymShort(ymAdd(finYM, -1))}</small>`);
+  const kpi = (l, v, d, cls = '') => `<div class="stat ${cls}"><div class="lbl">${l}</div><div class="val">${v}${d}</div></div>`;
+  const dr = (l, rule, v, cls = '') => `<div class="pb-row ${cls}"><span>${esc(l)}${rule ? ` <em>${esc(rule)}</em>` : ''}</span><b>${v}</b></div>`;
+  const series = []; for (let i = -8; i <= 3; i++) { const ym = ymAdd(cur, i); const x = finCalc(ym); series.push({ ym, rev: x.rev, costs: x.costs, future: x.future }); }
+
+  // cash this month
+  const inM = (d) => d && d.slice(0, 7) === finYM;
+  const got = FD.cpays.filter((x) => inM(x.paid_on)).reduce((t, x) => t + Number(x.amount), 0);
+  const paidStaff = FD.spays.filter((x) => inM(x.paid_on)).reduce((t, x) => t + Number(x.amount), 0);
+  const spent = c.ex.reduce((t, e) => t + Number(e.amount), 0);
+  // balances to date
+  const billed = {}; FD.blocks.filter((b) => b.done && b.prop && b.rev).forEach((b) => { billed[b.prop.client_id] = (billed[b.prop.client_id] || 0) + b.rev; });
+  FD.cpays.forEach((x) => { billed[x.client_id] = (billed[x.client_id] || 0) - Number(x.amount); });
+  const owe = Object.values(billed).filter((v) => v > 0.5).reduce((t, v) => t + v, 0), pre = -Object.values(billed).filter((v) => v < -0.5).reduce((t, v) => t + v, 0);
+  const earned = FD.blocks.filter((b) => b.done).reduce((t, b) => t + b.wage, 0), paidAll = FD.spays.reduce((t, x) => t + Number(x.amount), 0);
+
+  // per property
+  const byP = {};
+  for (const b of c.set) if (b.prop && b.rev) {
+    const r = (byP[b.prop.id] ||= { p: b.prop, n: 0, rev: 0, cost: 0 });
+    r.n++; r.rev += b.rev; r.cost += b.wage + b.ph * (BIZ.overheadPerHour + FIN.matPerHour);
+  }
+  const prow = Object.values(byP).map((r) => ({ ...r, prof: r.rev - r.cost, m: r.rev ? (r.rev - r.cost) / r.rev * 100 : 0 })).sort((a, b) => a.m - b.m);
+
+  const top = Math.max(1, ...c.lines.map((x) => x.v));
+  $('f-body').innerHTML = `
+    <div class="sf-stats f-kpis">
+      ${kpi('Приход', eur0(c.rev), delta(c.rev, pm.rev))}
+      ${kpi('Разходи', eur0(c.costs), delta(c.costs, pm.costs))}
+      ${kpi('Печалба преди данък', eur0(c.pre), delta(c.pre, pm.pre), c.pre < 0 ? 'loss' : '')}
+      ${kpi('За разпределяне', eur0(c.dist), `<small class="fdelta">след ${FIN.corpTax}% корпоративен данък</small>`, c.dist < 0 ? 'loss' : 'gain')}
+    </div>
+    ${finYM === cur && finSrc === 'done' ? `<p class="note">${esc(ymLabel(cur))} е в ход — приходът е само от вече изпълнените почиствания, а постоянните разходи са за целия месец.${c.pending > 0.5 ? ` Още <b>${eur(c.pending)}</b> са планирани до края на месеца.` : ''}</p>` : ''}
+    ${c.future ? `<p class="note">Бъдещ месец — числата са прогноза по графиците в календара.</p>` : ''}
+    ${c.pre < 0 && c.live ? `<div class="alert error">${ICONS.error}<span>Месецът е на загуба (${eur(c.pre)} преди данък). Постоянните разходи се плащат и при малко почиствания.</span></div>` : ''}
+    ${c.unassigned || c.unpriced ? `<p class="note warnline">${c.unassigned ? `${c.unassigned} почиств. нямат назначен хигиенист (без заплата в сметката). ` : ''}${c.unpriced ? `${c.unpriced} почиств. са към обект без цена (без приход).` : ''}</p>` : ''}
+
+    <div class="fgrid">
+      <div class="card fcard">
+        <h2>Приход и разходи</h2>
+        <div class="flegend"><span><i class="rv"></i>Приход</span><span><i class="cs"></i>Разходи</span><span class="muted">бледите = прогноза · натиснете месец</span></div>
+        ${finChart(series)}
+      </div>
+      <div class="card fcard">
+        <h2>Как се разпределят ${eur0(c.rev)}</h2>
+        <div class="pbreak flat">
+          ${dr(`Приход${c.n ? ` (${c.n} почиств.)` : ''}`, '', eur(c.rev), 'sum0')}
+          ${c.lines.map((x) => dr(x.l, x.rule, '−' + eur(x.v), x.est ? 'est' : '')).join('')}
+          ${dr('= Печалба преди данък', '', eur(c.pre), 'sum' + (c.pre < 0 ? ' neg' : ''))}
+          ${dr(`Корпоративен данък ${FIN.corpTax}%`, '', '−' + eur(c.corp))}
+          ${dr('= За разпределяне', '', eur(c.dist), 'tot' + (c.dist < 0 ? ' neg' : ''))}
+        </div>
+      </div>
+    </div>
+
+    <div class="fgrid">
+      <div class="card fcard">
+        <h2>Къде отиват парите</h2>
+        ${c.lines.filter((x) => x.v > 0).sort((a, b) => b.v - a.v).map((x) => `<div class="hbar"><div class="n">${esc(x.l)}</div><div class="t"><i style="width:${Math.max(2, x.v / top * 100)}%"></i></div><div class="v">${eur0(x.v)}${c.rev ? `<small>${Math.round(x.v / c.rev * 100)}%</small>` : ''}</div></div>`).join('') || '<div class="empty sm">Няма разходи.</div>'}
+      </div>
+      <div class="card fcard">
+        <h2>Собственици</h2>
+        <div class="owners">${c.owners.map((o) => `<div class="owner"><div><b>${esc(o.name)}</b><small>${o.pct}% собственост</small></div><div class="ov">${eur(o.net)}</div><small>дял ${eur(o.share)} − дивидентен данък ${FIN.divTax}% ${eur(o.dt)}</small></div>`).join('')}</div>
+        ${c.dist <= 0 ? '<p class="note">Няма печалба за разпределяне този месец.</p>' : ''}
+      </div>
+    </div>
+
+    <div class="fgrid">
+      <div class="card fcard">
+        <h2>Пари — ${esc(ymLabel(finYM))}</h2>
+        <div class="pbreak flat">
+          ${dr('Получено от клиенти', 'записани плащания', eur(got))}
+          ${dr('Изплатено на персонала', '', '−' + eur(paidStaff))}
+          ${dr('Записани разходи', '', '−' + eur(spent))}
+          ${dr('= Нетно движение', '', eur(got - paidStaff - spent), 'tot' + (got - paidStaff - spent < 0 ? ' neg' : ''))}
+        </div>
+      </div>
+      <div class="card fcard">
+        <h2>Към днес</h2>
+        <div class="sf-stats">
+          <div class="stat ${owe > 0.5 ? 'loss' : ''}"><div class="lbl">Клиентите дължат</div><div class="val">${eur(owe)}</div></div>
+          <div class="stat ${pre > 0.5 ? 'gain' : ''}"><div class="lbl">Предплатено от клиенти</div><div class="val">${eur(pre)}</div></div>
+          <div class="stat ${earned - paidAll > 0.5 ? 'warn' : ''}"><div class="lbl">Дължим на персонала</div><div class="val">${eur(Math.max(0, earned - paidAll))}</div></div>
+          <div class="stat"><div class="lbl">Изплатено на персонала — общо</div><div class="val">${eur(paidAll)}</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card fcard">
+      <h2>Рентабилност по обекти — ${esc(ymLabel(finYM))}</h2>
+      ${prow.length ? `<div class="ftbl-wrap"><table class="ftbl"><thead><tr><th>Обект</th><th class="r">Почист.</th><th class="r">Приход</th><th class="r">Печалба</th><th>Марж</th></tr></thead><tbody>
+        ${prow.map((r) => { const H = health(r.m); return `<tr><td><b>${esc(FD.cname[r.p.client_id] || '')}</b><small>${esc(r.p.name)}</small></td><td class="r">${r.n}</td><td class="r">${eur(r.rev)}</td><td class="r ${r.prof < 0 ? 'neg' : ''}">${eur(r.prof)}</td><td><span class="hbadge hb-${H.k}">${Math.round(r.m)}% · ${H.label}</span></td></tr>`; }).join('')}
+      </tbody></table></div><p class="note">Печалба = приход − заплати − постоянни разходи ${eur(BIZ.overheadPerHour)}/ч − материали ${eur(FIN.matPerHour)}/ч (преди данък). Най-слабите са първи.</p>` : '<div class="empty sm">Няма почиствания с цена за този месец.</div>'}
+    </div>
+
+    <div class="card fcard">
+      <h2>Разходи — ${esc(ymLabel(finYM))}</h2>
+      <form class="pay-form exp-form" novalidate>
+        <div class="two">
+          <div class="field"><label>Сума (€)</label><input class="input" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label>Дата</label><input class="input" name="spent_on" type="date" value="${finYM === cur ? ymd(new Date()) : finYM + '-01'}"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label>Категория</label><select class="input" name="category">${Object.entries(EXP_CAT).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
+          <div class="field"><label>Бележка</label><input class="input" name="note" autocomplete="off" placeholder="напр. микрофибърни кърпи"></div>
+        </div>
+        <div class="actions"><button class="btn" type="submit"><span class="label">${ic('plus')} Добави разход</span></button></div>
+      </form>
+      <div class="pay-list">${c.ex.length ? c.ex.map((e) => `<div class="pay-row"><div><b>${eur(e.amount)}</b> <span class="muted">${esc(EXP_CAT[e.category] || e.category)}</span><small>${new Date(e.spent_on).toLocaleDateString('bg-BG')}${e.note ? ' · ' + esc(e.note) : ''}${FD.names[e.created_by] ? ' · ' + esc(FD.names[e.created_by]) : ''}</small></div>${isOwner() ? `<button type="button" class="sq-btn sq-del" data-del-exp="${e.id}" title="Изтрий" aria-label="Изтрий разхода"><span class="emo">${ic('trash')}</span></button>` : ''}</div>`).join('') : '<div class="empty sm">Няма записани разходи за месеца.</div>'}</div>
+    </div>
+
+    ${isOwner() ? `<details class="card fcard fset"><summary><h2>Модел на разходите</h2><small class="muted">важи за всички месеци и за маржовете в Клиенти</small></summary>
+      <form class="fset-form" novalidate>
+        <div class="spec-grid">
+          <div class="field"><label>Социални осигуровки / мес (€)</label><input class="input" name="social" type="number" min="0" step="1" value="${FIN.social}"></div>
+          <div class="field"><label>Счетоводител / мес (€)</label><input class="input" name="accounting" type="number" min="0" step="1" value="${FIN.accounting}"></div>
+          <div class="field"><label>Препарати / мес (€)</label><input class="input" name="solutions" type="number" min="0" step="1" value="${FIN.solutions}"></div>
+          <div class="field"><label>Натоварване ч / мес</label><input class="input" name="loadH" type="number" min="1" step="1" value="${FIN.loadH}"></div>
+          <div class="field"><label>Материали €/ч (оценка)</label><input class="input" name="matPerHour" type="number" min="0" step="0.1" value="${FIN.matPerHour}"></div>
+          <div class="field"><label>Корпоративен данък %</label><input class="input" name="corpTax" type="number" min="0" step="0.5" value="${FIN.corpTax}"></div>
+          <div class="field"><label>Дивидентен данък %</label><input class="input" name="divTax" type="number" min="0" step="0.5" value="${FIN.divTax}"></div>
+          ${(FIN.owners || []).map((o, i) => `<div class="field"><label>Дял на ${esc(o.name)} %</label><input class="input" name="own${i}" type="number" min="0" max="100" step="1" value="${o.pct}"></div>`).join('')}
+        </div>
+        <p class="note">Постоянни разходи на работен час: (осигуровки + счетоводител + препарати) ÷ натоварване = <b>${eur(BIZ.overheadPerHour)}</b>.</p>
+        <div class="actions"><button class="btn secondary" type="submit"><span class="label">Запази модела</span></button></div>
+      </form></details>` : ''}`;
+
+  $('f-body').querySelectorAll('.fbar').forEach((g) => g.addEventListener('click', () => { finYM = g.dataset.ym; renderFinances(); }));
+  $('f-body').querySelector('.exp-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, amount = Number(String(f.amount.value).replace(',', '.'));
+    if (!(amount > 0)) return toast('Въведете сума.');
+    if (!f.spent_on.value) return toast('Изберете дата.');
+    const btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
+    const { error } = await supabase.from('expenses').insert({ amount, spent_on: f.spent_on.value, category: f.category.value, note: f.note.value.trim() || null });
+    busy(btn, false);
+    if (error) return toast(authMessage(error));
+    toast('Разходът е записан.'); finYM = f.spent_on.value.slice(0, 7); loadFinances();
+  });
+  $('f-body').querySelectorAll('[data-del-exp]').forEach((b) => b.addEventListener('click', async () => {
+    const x = FD.exps.find((e) => e.id === b.dataset.delExp);
+    if (!(await confirmDialog({ title: 'Изтриване на разхода?', text: `${eur(x.amount)} · ${EXP_CAT[x.category] || ''}${x.note ? ' · ' + x.note : ''}`, ok: 'Изтрий' }))) return;
+    const { error } = await supabase.from('expenses').delete().eq('id', x.id);
+    if (error) return toast(authMessage(error));
+    toast('Разходът е изтрит.'); loadFinances();
+  }));
+  $('f-body').querySelector('.fset-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, n = (k) => Math.max(0, Number(String(f[k].value).replace(',', '.')) || 0);
+    const owners = (FIN.owners || []).map((o, i) => ({ name: o.name, pct: n('own' + i) }));
+    if (Math.round(owners.reduce((t, o) => t + o.pct, 0)) !== 100) return toast('Дяловете на собствениците трябва да са общо 100%.');
+    const value = { ...FIN, social: n('social'), accounting: n('accounting'), solutions: n('solutions'), loadH: Math.max(1, n('loadH')), matPerHour: n('matPerHour'), corpTax: n('corpTax'), divTax: n('divTax'), owners };
+    const btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
+    const { error } = await supabase.from('app_settings').upsert({ key: 'finance', value, updated_at: new Date().toISOString() });
+    busy(btn, false);
+    if (error) return toast(authMessage(error));
+    applyFinanceSettings(value); toast('Моделът е запазен.'); renderFinances();
+  });
+}
+$('f-prev').addEventListener('click', () => { finYM = ymAdd(finYM, -1); renderFinances(); });
+$('f-next').addEventListener('click', () => { finYM = ymAdd(finYM, 1); renderFinances(); });
+$('f-today').addEventListener('click', () => { finYM = ymOf(new Date()); renderFinances(); });
+document.querySelectorAll('#f-src button').forEach((b) => b.addEventListener('click', () => { finSrc = b.dataset.src; renderFinances(); }));
 
 /* ======== Staff file (shared by the staff dialog and a cleaner's own page) ======== */
 const WD_LONG = ['', 'Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота', 'Неделя'];
