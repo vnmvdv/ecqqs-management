@@ -800,7 +800,7 @@
   .link { font-family: var(--font-ui); border: 1px solid var(--ink); color: var(--ink); background: transparent; font-weight: 600; font-size: 12.5px; }
   .link:hover { background: var(--ink); color: var(--paper); }
 
-  /* square icon buttons (☰, initials, ×, filters, ➕ …) */
+  /* square icon buttons (menu, initials, close, filters, add …) */
   .sq-btn, .chip.icon, .menu-btn, .tb-dev, .sheet .x, .drawer-close, .dev-fab, .toggle-pw:focus-visible {
     background: transparent; color: var(--ink); border: 1px solid var(--ink); box-shadow: none;
   }
@@ -912,6 +912,43 @@
   #cal .fc-list-day-cushion { background: var(--paper-2); font-family: var(--font-ui); }
   .cal-title { font-weight: 800; }
   #cal-today { font-family: var(--font-ui); font-weight: 600; }
+
+  /* ---------- Minimal line icons (replace emoji) ---------- */
+  .ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; vertical-align: -3.5px; }
+  .emo { display: inline-grid; place-items: center; line-height: 0; }
+  .emo .ic { width: 20px; height: 20px; }
+  .sq-btn.sm .ic, .av-head .ic, .av-add .ic, .pay-row .ic { width: 16px; height: 16px; }
+  .chip.icon .ic, .sq-btn .emo .ic { width: 19px; height: 19px; }
+  .chip.icon.active .ic { stroke: var(--paper); }
+  .menu-btn .ic, .tb-dev .ic, .dev-fab .ic { width: 16px; height: 16px; }
+  .tb-dev { color: var(--warn); }
+  .dev-fab .ic { width: 20px; height: 20px; }
+  .btn .label .ic { width: 16px; height: 16px; vertical-align: -3px; margin-right: 2px; }
+  .badge .ic { width: 12px; height: 12px; vertical-align: -2px; stroke-width: 2; }
+  .dev-lbl { display: inline-flex; align-items: center; gap: 6px; }
+  .dev-back { display: inline-flex; align-items: center; gap: 6px; }
+  .dev-back .ic { width: 14px; height: 14px; }
+  .dev-role .emo { width: 44px; height: 44px; background: var(--paper); border: 1px solid var(--ink); color: var(--ink); }
+  .dev-role.current .emo { background: var(--paper); color: var(--ink); }
+  .emo-av { color: var(--ink) !important; }
+  .emo-av .ic { width: 20px; height: 20px; }
+  .pf-avatar.emo-av .ic { width: 26px; height: 26px; }
+  .prop-mini summary .avatar .ic { width: 17px; height: 17px; }
+  .seg span { display: flex !important; align-items: center; justify-content: center; gap: 8px; }
+  .seg input:checked + span .ic { stroke: var(--paper); }
+  .ev-v-rep { display: flex; align-items: center; gap: 6px; }
+  .ev-v-rep .ic { width: 15px; height: 15px; }
+  .sf-quick .sq-btn { color: var(--ink); }
+  .sf-quick .sq-btn.off { color: var(--muted); }
+  /* status dots */
+  .sdot.sdot { display: inline-block; width: 10px; height: 10px; border-radius: 50% !important; background: var(--muted); flex-shrink: 0; vertical-align: 0; }
+  .sdot.ok { background: var(--ok); }
+  .sdot.warn { background: #C08A1E; }
+  .sdot.bad { background: var(--accent); }
+  .chip.icon .sdot.sdot { width: 11px; height: 11px; box-shadow: 0 0 0 2px var(--paper); }
+  .chip.icon.active .sdot.sdot { box-shadow: 0 0 0 2px var(--ink); }
+  .badge .sdot.sdot, .pf-sub .sdot.sdot { width: 7px; height: 7px; margin-right: 4px; vertical-align: 1px; }
+  .badge .ic, .pf-sub .ic { width: 12px; height: 12px; vertical-align: -2px; }
 </style>
 </head>
 <body>
@@ -1037,8 +1074,8 @@
 
 <!-- ========== App ========== -->
 <div id="dev-bar" hidden role="status">
-  <span>🛠️ Тестов режим: <b id="dev-bar-role">—</b></span>
-  <button class="dev-back" id="dev-back">↩ Към собственик</button>
+  <span class="dev-lbl"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5.5l-3 13"/></svg> Тестов режим: <b id="dev-bar-role">—</b></span>
+  <button class="dev-back" id="dev-back"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 7L4.5 12l5 5M5 12h14.5"/></svg> Към собственик</button>
 </div>
 <div id="view-app" hidden>
   <div class="topbar">
@@ -1048,7 +1085,7 @@
     </button>
     <div class="tb-brand">EverClean QQS<small>Система за управление</small></div>
     <div class="tb-right">
-      <button class="tb-dev" id="dev-top" title="Тест: смяна на роля" aria-label="Тест: смяна на роля" hidden>🛠️</button>
+      <button class="tb-dev" id="dev-top" title="Тест: смяна на роля" aria-label="Тест: смяна на роля" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5.5l-3 13"/></svg></button>
       <button class="me-btn" id="me-btn" aria-haspopup="dialog" aria-label="Моят профил">?</button>
     </div>
   </div>
@@ -1066,7 +1103,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.18 — дизайн като CRM</div>
+      <div class="version">v0.19 — минималистични икони</div>
     </div>
   </aside>
 
@@ -1109,7 +1146,7 @@
         </div>
       </div>
       <div class="cal-tools" id="cal-tools">
-        <button class="sq-btn" id="cal-add" title="Ново събитие" aria-label="Ново събитие" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <button class="sq-btn" id="cal-add" title="Ново събитие" aria-label="Ново събитие" hidden><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
         <select class="input cal-people" id="cal-people" aria-label="Чии събития" hidden></select>
       </div>
       <div id="cal"></div>
@@ -1122,13 +1159,13 @@
         <input class="input search" id="c-search" type="search" placeholder="Търсене по име, контакт, ЕИК или адрес" autocomplete="off" aria-label="Търсене">
       </div>
       <div class="toolbar sqrow">
-        <button class="sq-btn" id="c-add" title="Нов клиент" aria-label="Нов клиент" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <button class="sq-btn" id="c-add" title="Нов клиент" aria-label="Нов клиент" hidden><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
         <div class="chips" id="c-filters" role="group" aria-label="Филтър по статус">
-          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true">⚪</span><span class="n"></span></button>
-          <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true">🟢</span><span class="n"></span></button>
-          <button class="chip icon" data-f="prospect" title="Потенциални" aria-label="Потенциални" aria-pressed="false"><span class="emo" aria-hidden="true">🟡</span><span class="n"></span></button>
-          <button class="chip icon" data-f="paused" title="На пауза" aria-label="На пауза" aria-pressed="false"><span class="emo" aria-hidden="true">⏸️</span><span class="n"></span></button>
-          <button class="chip icon" data-f="ended" title="Приключили" aria-label="Приключили" aria-pressed="false"><span class="emo" aria-hidden="true">🔴</span><span class="n"></span></button>
+          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.5"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot ok" aria-hidden="true"></span></span><span class="n"></span></button>
+          <button class="chip icon" data-f="prospect" title="Потенциални" aria-label="Потенциални" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot warn" aria-hidden="true"></span></span><span class="n"></span></button>
+          <button class="chip icon" data-f="paused" title="На пауза" aria-label="На пауза" aria-pressed="false"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6.5v11M14.5 6.5v11"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="ended" title="Приключили" aria-label="Приключили" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot bad" aria-hidden="true"></span></span><span class="n"></span></button>
         </div>
       </div>
       <div class="ulist" id="c-list" aria-live="polite"></div>
@@ -1141,12 +1178,12 @@
         <input class="input search" id="u-search" type="search" placeholder="Търсене по име, имейл или телефон" autocomplete="off" aria-label="Търсене">
       </div>
       <div class="toolbar sqrow">
-        <button class="sq-btn" id="u-add" title="Добави потребител" aria-label="Добави потребител" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <button class="sq-btn" id="u-add" title="Добави потребител" aria-label="Добави потребител" hidden><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
         <div class="chips" id="u-filters" role="group" aria-label="Филтър по статус">
-          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true">⚪</span><span class="n"></span></button>
-          <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true">🟢</span><span class="n"></span></button>
-          <button class="chip icon" data-f="pending" title="Чакащи одобрение" aria-label="Чакащи одобрение" aria-pressed="false"><span class="emo" aria-hidden="true">🟡</span><span class="n"></span></button>
-          <button class="chip icon" data-f="disabled" title="Деактивирани" aria-label="Деактивирани" aria-pressed="false"><span class="emo" aria-hidden="true">🔴</span><span class="n"></span></button>
+          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.5"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot ok" aria-hidden="true"></span></span><span class="n"></span></button>
+          <button class="chip icon" data-f="pending" title="Чакащи одобрение" aria-label="Чакащи одобрение" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot warn" aria-hidden="true"></span></span><span class="n"></span></button>
+          <button class="chip icon" data-f="disabled" title="Деактивирани" aria-label="Деактивирани" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot bad" aria-hidden="true"></span></span><span class="n"></span></button>
         </div>
       </div>
       <div class="ulist" id="u-list" aria-live="polite"></div>
@@ -1161,13 +1198,13 @@
         <input class="input search" id="s-search" type="search" placeholder="Търсене по име, телефон или район" autocomplete="off" aria-label="Търсене">
       </div>
       <div class="toolbar sqrow">
-        <button class="sq-btn" id="s-add" title="Добави служител" aria-label="Добави служител" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <button class="sq-btn" id="s-add" title="Добави служител" aria-label="Добави служител" hidden><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
         <div class="chips" id="s-filters" role="group" aria-label="Филтър по роля">
-          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true">⚪</span><span class="n"></span></button>
-          <button class="chip icon" data-f="owner" title="Собственици" aria-label="Собственици" aria-pressed="false"><span class="emo" aria-hidden="true">👑</span><span class="n"></span></button>
-          <button class="chip icon" data-f="manager" title="Мениджъри" aria-label="Мениджъри" aria-pressed="false"><span class="emo" aria-hidden="true">🧭</span><span class="n"></span></button>
-          <button class="chip icon" data-f="cleaner" title="Хигиенисти" aria-label="Хигиенисти" aria-pressed="false"><span class="emo" aria-hidden="true">🧹</span><span class="n"></span></button>
-          <button class="chip icon" data-f="accountant" title="Счетоводители" aria-label="Счетоводители" aria-pressed="false"><span class="emo" aria-hidden="true">📊</span><span class="n"></span></button>
+          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.5"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="owner" title="Собственици" aria-label="Собственици" aria-pressed="false"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M5 15l-1.5-8 5 3.5L12 5l3.5 5.5 5-3.5L19 15z"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="manager" title="Мениджъри" aria-label="Мениджъри" aria-pressed="false"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="cleaner" title="Хигиенисти" aria-label="Хигиенисти" aria-pressed="false"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4l-6.5 6.5M9.5 11.5l3 3M7.5 12.5c-2 1.5-3 4-3 7h4.5l1-2 1 2h2.5c.5-2.5-.5-5-2.5-6.5"/></svg></span><span class="n"></span></button>
+          <button class="chip icon" data-f="accountant" title="Счетоводители" aria-label="Счетоводители" aria-pressed="false"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/></svg></span><span class="n"></span></button>
         </div>
       </div>
       <div class="ulist" id="s-list" aria-live="polite"></div>
@@ -1260,8 +1297,8 @@
     <dl class="pf-dl ev-v-dl" id="ev-v-dl"></dl>
     <div id="ev-v-alert" role="alert"></div>
     <div class="actions" id="ev-v-actions">
-      <button class="btn secondary" id="ev-v-edit"><span class="label">✏️ Редактирай</span></button>
-      <button class="btn ghost-danger" id="ev-v-del"><span class="label">🗑 Изтрий</span></button>
+      <button class="btn secondary" id="ev-v-edit"><span class="label"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19.5l1-4L15.5 5.5l3 3-10 10zM13.5 7.5l3 3"/></svg> Редактирай</span></button>
+      <button class="btn ghost-danger" id="ev-v-del"><span class="label"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13M10 10.5v6M14 10.5v6"/></svg> Изтрий</span></button>
     </div>
     <div class="actions" id="ev-v-delrec" hidden>
       <button class="btn ghost-danger" id="ev-v-del-one"><span class="label">Изтрий само това</span></button>
@@ -1449,7 +1486,7 @@
 </dialog>
 
 <!-- Dev: switch role (owners only) -->
-<button class="dev-fab" id="dev-fab" title="Тест: смяна на роля" aria-label="Тест: смяна на роля" hidden>🛠️</button>
+<button class="dev-fab" id="dev-fab" title="Тест: смяна на роля" aria-label="Тест: смяна на роля" hidden><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5.5l-3 13"/></svg></button>
 <dialog class="sheet" id="dlg-dev" aria-labelledby="dev-title">
   <div class="sheet-inner">
     <button class="x" data-close aria-label="Затвори">×</button>
@@ -1457,11 +1494,11 @@
     <p class="lead">Влизате като тестов потребител с избраната роля и виждате системата точно като него. Само собствениците имат този бутон.</p>
     <div id="dev-alert" role="alert"></div>
     <div class="dev-grid" id="dev-grid">
-      <button class="dev-role" data-role="owner"><span class="emo">👑</span><span>Собственик<small>Вие</small></span></button>
-      <button class="dev-role" data-role="manager"><span class="emo">🧭</span><span>Мениджър</span></button>
-      <button class="dev-role" data-role="cleaner"><span class="emo">🧹</span><span>Хигиенист</span></button>
-      <button class="dev-role" data-role="client"><span class="emo">🏠</span><span>Клиент</span></button>
-      <button class="dev-role" data-role="accountant"><span class="emo">📊</span><span>Счетоводител</span></button>
+      <button class="dev-role" data-role="owner"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 18h16M5 15l-1.5-8 5 3.5L12 5l3.5 5.5 5-3.5L19 15z"/></svg></span><span>Собственик<small>Вие</small></span></button>
+      <button class="dev-role" data-role="manager"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M15.5 8.5l-2 5-5 2 2-5z"/></svg></span><span>Мениджър</span></button>
+      <button class="dev-role" data-role="cleaner"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 4l-6.5 6.5M9.5 11.5l3 3M7.5 12.5c-2 1.5-3 4-3 7h4.5l1-2 1 2h2.5c.5-2.5-.5-5-2.5-6.5"/></svg></span><span>Хигиенист</span></button>
+      <button class="dev-role" data-role="client"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5L12 4l8 6.5V20h-5.5v-5.5h-5V20H4z"/></svg></span><span>Клиент</span></button>
+      <button class="dev-role" data-role="accountant"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6"/></svg></span><span>Счетоводител</span></button>
     </div>
     <p class="note">Тестовите акаунти (dev-…@example.com) не се показват в „Потребители“ и не могат да влизат с парола.</p>
   </div>
@@ -1480,6 +1517,9 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
    Config — the publishable key is safe to ship in the browser;
    all data access is protected by Row Level Security in Supabase.
 ------------------------------------------------------------------ */
+const ICO = {"plus": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg>", "ring": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"5.5\"/></svg>", "pause": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9.5 6.5v11M14.5 6.5v11\"/></svg>", "crown": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 18h16M5 15l-1.5-8 5 3.5L12 5l3.5 5.5 5-3.5L19 15z\"/></svg>", "compass": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M15.5 8.5l-2 5-5 2 2-5z\"/></svg>", "broom": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M19 4l-6.5 6.5M9.5 11.5l3 3M7.5 12.5c-2 1.5-3 4-3 7h4.5l1-2 1 2h2.5c.5-2.5-.5-5-2.5-6.5\"/></svg>", "chart": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 20h16M7 16v-4M12 16V7M17 16v-6\"/></svg>", "user": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8.5\" r=\"3.5\"/><path d=\"M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5\"/></svg>", "home": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 10.5L12 4l8 6.5V20h-5.5v-5.5h-5V20H4z\"/></svg>", "office": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 20V4h12v16M4 20h16M9.5 8h1M13.5 8h1M9.5 11.5h1M13.5 11.5h1M11 20v-4h2v4\"/></svg>", "shop": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 9.5L6 5h12l1.5 4.5M4.5 9.5h15M4.5 9.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5M6 12v8h12v-8M10 20v-4h4v4\"/></svg>", "blocks": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 20V9l6-3v14M9.5 20V4h11v16M3 20h18M13 8h1M17 8h1M13 11.5h1M17 11.5h1M13 15h1M17 15h1\"/></svg>", "venue": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 20h17M4.5 9.5h15M12 4l8 5.5H4zM7 9.5v8M12 9.5v8M17 9.5v8\"/></svg>", "pin": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 20.5s6.5-5.6 6.5-11a6.5 6.5 0 0 0-13 0c0 5.4 6.5 11 6.5 11z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.3\"/></svg>", "phone": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 4h3l1.5 4-2 1.3a10 10 0 0 0 6.2 6.2l1.3-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 4 6a2 2 0 0 1 2-2z\"/></svg>", "chat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4.5 19.5l1.3-4.3A7.5 7.5 0 1 1 20 11.5z\"/></svg>", "mail": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16v12H4zM4.5 6.5l7.5 6 7.5-6\"/></svg>", "alert": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4l9 16H3zM12 10v4.5M12 17.2v.3\"/></svg>", "map": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5L4 7v12l5-2 6 2 5-2V5l-5 2zM9 5v12M15 7v12\"/></svg>", "code": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5.5l-3 13\"/></svg>", "pencil": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 19.5l1-4L15.5 5.5l3 3-10 10zM13.5 7.5l3 3\"/></svg>", "trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13M10 10.5v6M14 10.5v6\"/></svg>", "repeat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M16.5 3.5l3 3-3 3M4.5 11.5V10a3.5 3.5 0 0 1 3.5-3.5h11.5M7.5 20.5l-3-3 3-3M19.5 12.5V14a3.5 3.5 0 0 1-3.5 3.5H4.5\"/></svg>", "star": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4.5l2.3 4.7 5.2.7-3.8 3.6.9 5.1L12 16.2l-4.6 2.4.9-5.1-3.8-3.6 5.2-.7z\"/></svg>", "back": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9.5 7L4.5 12l5 5M5 12h14.5\"/></svg>", "ext": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5H5v14h14v-4M13 4h7v7M20 4l-9 9\"/></svg>", "check": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>", "x": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/></svg>", "users": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"3\"/><path d=\"M3.5 19c.5-3 2.6-4.5 5.5-4.5s5 1.5 5.5 4.5M15.5 6.2a3 3 0 0 1 0 5.6M17 14.7c2 .5 3.2 2 3.5 4.3\"/></svg>"};
+const ic = (n) => ICO[n] || '';
+const sdot = (k) => `<span class="sdot ${k}" aria-hidden="true"></span>`;
 const SUPABASE_URL = 'https://dyshtvanqgkhwxzjkxve.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_wSEjtUEitACTIjy7Kab6gw_2FAX0ba3';
 const STORAGE_KEY  = 'ecqqs-mgmt-auth';
@@ -2268,7 +2308,7 @@ async function loadCalPeople() {
   calPeople = (data || []).sort((a, b) => (a.is_dev - b.is_dev) || (order[a.role] - order[b.role]) || (fullName(a) || a.email).localeCompare(fullName(b) || b.email, 'bg'));
   calPeopleById = Object.fromEntries(calPeople.map((p) => [p.id, p]));
   const sel = $('cal-people'); const keep = sel.value || ls.get(CAL_PEOPLE_KEY) || 'all';
-  sel.innerHTML = `<option value="all">👥 Всички събития</option><option value="mine">🙋 Само моите</option><option value="none">⚠️ Без назначени хора</option>` +
+  sel.innerHTML = `<option value="all">Всички събития</option><option value="mine">Само моите</option><option value="none">Без назначени хора</option>` +
     calPeople.map((p) => `<option value="${p.id}">${esc((fullName(p) || p.email) + (p.is_dev ? ' (тест)' : ''))} — ${esc(ROLE_LABELS[p.role])}</option>`).join('');
   sel.value = [...sel.options].some((o) => o.value === keep) ? keep : 'all';
 }
@@ -2515,7 +2555,7 @@ function recurrenceText(r) {
   else if (rec.freq === 'monthly') t = 'Всеки месец на ' + new Date(r.start_at).getDate() + '-о число';
   else if (rec.freq === 'yearly') t = 'Всяка година на ' + new Date(r.start_at).toLocaleDateString('bg-BG', { day: 'numeric', month: 'long' });
   if (rec.until) t += ' до ' + fromLocal(rec.until).toLocaleDateString('bg-BG');
-  return '🔁 ' + t;
+  return t;
 }
 
 /* --- view dialog --- */
@@ -2534,7 +2574,7 @@ function openEventView(fcEvent) {
     when = ymd(start) === ymd(end) ? `${fmtDate(start)} · ${fmtTime(start)} – ${fmtTime(end)}` : `${fmtDate(start)} ${fmtTime(start)} – ${fmtDate(end)} ${fmtTime(end)}`;
   }
   $('ev-v-when').textContent = when;
-  $('ev-v-rep').hidden = !r.recurrence; $('ev-v-rep').textContent = recurrenceText(r);
+  $('ev-v-rep').hidden = !r.recurrence; $('ev-v-rep').innerHTML = r.recurrence ? ic('repeat') + ' ' + esc(recurrenceText(r)) : '';
   const ids = (r.event_assignees || []).map((a) => a.user_id);
   const rows = [];
   if (ids.length) rows.push(['Хора', ids.map(personName).join(', ')]);
@@ -2555,7 +2595,7 @@ $('ev-v-del').addEventListener('click', async () => {
   if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.className = 'btn danger'; btn.querySelector('.label').textContent = 'Потвърди изтриване'; return; }
   await deleteEvent(r.id);
 });
-$('dlg-evview').addEventListener('close', () => { const b = $('ev-v-del'); b.dataset.armed = ''; b.className = 'btn ghost-danger'; b.querySelector('.label').textContent = '🗑 Изтрий'; });
+$('dlg-evview').addEventListener('close', () => { const b = $('ev-v-del'); b.dataset.armed = ''; b.className = 'btn ghost-danger'; b.querySelector('.label').innerHTML = ic('trash') + ' Изтрий'; });
 $('ev-v-del-all').addEventListener('click', () => evViewing && deleteEvent(evViewing.row.id));
 $('ev-v-del-one').addEventListener('click', async () => {
   const { row, occStart } = evViewing || {}; if (!row) return;
@@ -2710,8 +2750,8 @@ $('ev-form').addEventListener('submit', async (e) => {
 
 /* ---------- Clients & properties ---------- */
 const CL_STATUS = { prospect: 'Потенциален', active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
-const CL_STATUS_EMO = { prospect: '🟡', active: '🟢', paused: '⏸️', ended: '🔴' };
-const PR_KIND = { office: ['🏢', 'Офис'], home: ['🏠', 'Дом'], shop: ['🏬', 'Магазин'], building: ['🏘️', 'Вход / сграда'], venue: ['🏛️', 'Заведение / зала'], other: ['📍', 'Друго'] };
+const CL_STATUS_EMO = { prospect: sdot('warn'), active: sdot('ok'), paused: ic('pause'), ended: sdot('bad') };
+const PR_KIND = { office: [ic('office'), 'Офис'], home: [ic('home'), 'Дом'], shop: [ic('shop'), 'Магазин'], building: [ic('blocks'), 'Вход / сграда'], venue: [ic('venue'), 'Заведение / зала'], other: [ic('pin'), 'Друго'] };
 const PR_STATUS = { active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
 const PRICE_MODEL = { visit: 'на посещение', hour: 'на час', month: 'месечно' };
 const PAY_METHOD = { bank: 'Банков превод', cash: 'В брой', card: 'Карта' };
@@ -2739,11 +2779,11 @@ function renderClients() {
     (!q || [c.name, c.legal_name, c.contact_name, c.contact_phone, c.contact_email, c.eik, ...(c.properties || []).flatMap((p) => [p.name, p.address])]
       .some((v) => (v || '').toLowerCase().includes(q))))
     .sort((a, b) => (order[a.status] - order[b.status]) || a.name.localeCompare(b.name, 'bg'));
-  if (!list.length) { $('c-list').innerHTML = `<div class="empty">${q || cFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма клиенти. Натиснете ➕, за да добавите първия.'}</div>`; return; }
+  if (!list.length) { $('c-list').innerHTML = `<div class="empty">${q || cFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма клиенти. Натиснете +, за да добавите първия.'}</div>`; return; }
   $('c-list').innerHTML = list.map((c) => {
     const n = (c.properties || []).length, mv = monthlyValue(c.properties);
     return `<button class="urow" data-id="${c.id}">
-      <div class="avatar emo-av">${c.kind === 'person' ? '👤' : '🏢'}</div>
+      <div class="avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
       <div style="min-width:0">
         <div class="nm">${esc(c.name)}</div>
         <div class="sub">${n} ${n === 1 ? 'обект' : 'обекта'}${c.contact_name ? ' · ' + esc(c.contact_name) : ''}${c.contact_phone ? ' · ' + esc(c.contact_phone) : ''}</div>
@@ -2770,10 +2810,10 @@ function clientDataForm(c, manage) {
   const v = (k) => esc(c?.[k] ?? '');
   return `<form class="cl-form" novalidate>
     <div class="field"><label>Вид</label>
-      <div class="seg"><label><input type="radio" name="kind" value="company" ${c?.kind !== 'person' ? 'checked' : ''}><span>🏢 Фирма</span></label>
-      <label><input type="radio" name="kind" value="person" ${c?.kind === 'person' ? 'checked' : ''}><span>👤 Физическо лице</span></label></div></div>
+      <div class="seg"><label><input type="radio" name="kind" value="company" ${c?.kind !== 'person' ? 'checked' : ''}><span>${ic('office')} Фирма</span></label>
+      <label><input type="radio" name="kind" value="person" ${c?.kind === 'person' ? 'checked' : ''}><span>${ic('user')} Физическо лице</span></label></div></div>
     <div class="field"><label>Име на клиента</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Тех Офис ООД / Мария Петрова"></div>
-    <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(CL_STATUS).map(([k, l]) => `<option value="${k}" ${(c?.status || 'active') === k ? 'selected' : ''}>${CL_STATUS_EMO[k]} ${l}</option>`).join('')}</select></div>
+    <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(CL_STATUS).map(([k, l]) => `<option value="${k}" ${(c?.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
     <div class="sf-group">Основен контакт</div>
     <div class="field"><label>Име</label><input class="input" name="contact_name" value="${v('contact_name')}" autocomplete="off"></div>
     <div class="two">
@@ -2817,14 +2857,14 @@ function renderClientFile(root, c, manage, tab = 'sum') {
   const active = props.filter((p) => p.status === 'active').length;
   root.innerHTML = `
     <div class="pf-head">
-      <div class="avatar pf-avatar emo-av">${c.kind === 'person' ? '👤' : '🏢'}</div>
+      <div class="avatar pf-avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
       <div style="min-width:0"><h2 class="sf-name">${esc(c.name)}</h2>
         <div class="pf-sub">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}${c.legal_name ? ' · ' + esc(c.legal_name) : ''}</div></div>
     </div>
     <div class="sf-quick">
-      <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? telHref(c.contact_phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">📞</span></a>
-      <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? viberHref(c.contact_phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">💬</span></a>
-      <a class="sq-btn ${c.contact_email ? '' : 'off'}" href="${c.contact_email ? 'mailto:' + esc(c.contact_email) : '#'}" title="Имейл" aria-label="Имейл"><span class="emo">✉️</span></a>
+      <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? telHref(c.contact_phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>
+      <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? viberHref(c.contact_phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">${ic('chat')}</span></a>
+      <a class="sq-btn ${c.contact_email ? '' : 'off'}" href="${c.contact_email ? 'mailto:' + esc(c.contact_email) : '#'}" title="Имейл" aria-label="Имейл"><span class="emo">${ic('mail')}</span></a>
     </div>
     <div class="sf-tabs" style="grid-template-columns:repeat(${tabs.length},1fr)" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sf-tab${k === tab ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
     <div class="sf-alert" role="alert"></div>
@@ -2844,7 +2884,7 @@ function renderClientFile(root, c, manage, tab = 'sum') {
       </dl>
     </div>
     <div class="sf-pane" data-pane="props" ${tab === 'props' ? '' : 'hidden'}>
-      ${manage ? '<div class="actions" style="margin:0 0 12px"><button class="btn" type="button" data-act="add-prop"><span class="label">➕ Нов обект</span></button></div>' : ''}
+      ${manage ? `<div class="actions" style="margin:0 0 12px"><button class="btn" type="button" data-act="add-prop"><span class="label">${ic('plus')} Нов обект</span></button></div>` : ''}
       <div class="ulist">${props.length ? props.slice().sort((a, b) => a.name.localeCompare(b.name, 'bg')).map((p) => `
         <button class="urow" type="button" data-prop="${p.id}">
           <div class="avatar emo-av">${(PR_KIND[p.kind] || PR_KIND.other)[0]}</div>
@@ -2960,13 +3000,13 @@ async function openProperty(c, id) {
   $('pr-root').innerHTML = `
     <h2>${id ? esc(p.name) : 'Нов обект'}</h2>
     <p class="lead">${esc(c.name)}</p>
-    ${id && p.address ? `<div class="sf-quick"><a class="sq-btn" href="${mapsHref(p.address)}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">🗺️</span></a>
-      ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">📞</span></a>` : ''}</div>` : ''}
+    ${id && p.address ? `<div class="sf-quick"><a class="sq-btn" href="${mapsHref(p.address)}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">${ic('map')}</span></a>
+      ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>` : ''}</div>` : ''}
     <div class="sf-alert" role="alert"></div>
     <form class="pr-form" novalidate>
       <div class="field"><label>Име на обекта</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Офис Лозенец, ет. 3"></div>
       <div class="two">
-        <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [e, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${e} ${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [e, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(PR_STATUS).map(([k, l]) => `<option value="${k}" ${(p.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       </div>
       <div class="sf-group">Местоположение</div>
@@ -3088,7 +3128,7 @@ function renderStaff() {
       <div class="tags">
         ${p.id === currentUserId ? '<span class="badge you">Вие</span>' : ''}
         ${p.is_dev ? '<span class="badge">Тест</span>' : ''}
-        ${p.d.rating != null ? `<span class="badge">⭐ ${esc(String(p.d.rating))}</span>` : ''}
+        ${p.d.rating != null ? `<span class="badge">${ic('star')} ${esc(String(p.d.rating))}</span>` : ''}
         ${p.status !== 'active' ? `<span class="badge ${p.status}">${esc(STATUS_LABELS[p.status])}</span>` : ''}
       </div>
     </button>`).join('');
@@ -3187,10 +3227,10 @@ function staffFileHTML(p, perms) {
       </div>
     </div>
     ${perms.self ? '' : `<div class="sf-quick">
-      <a class="sq-btn ${has ? '' : 'off'}" href="${has ? telHref(p.phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">📞</span></a>
-      <a class="sq-btn ${has ? '' : 'off'}" href="${has ? viberHref(p.phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">💬</span></a>
-      <a class="sq-btn" href="mailto:${esc(p.email)}" title="Имейл" aria-label="Имейл"><span class="emo">✉️</span></a>
-      ${d.emergency_phone ? `<a class="sq-btn" href="${telHref(d.emergency_phone)}" title="Спешен контакт" aria-label="Обаждане до спешен контакт"><span class="emo">🆘</span></a>` : ''}
+      <a class="sq-btn ${has ? '' : 'off'}" href="${has ? telHref(p.phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>
+      <a class="sq-btn ${has ? '' : 'off'}" href="${has ? viberHref(p.phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">${ic('chat')}</span></a>
+      <a class="sq-btn" href="mailto:${esc(p.email)}" title="Имейл" aria-label="Имейл"><span class="emo">${ic('mail')}</span></a>
+      ${d.emergency_phone ? `<a class="sq-btn" href="${telHref(d.emergency_phone)}" title="Спешен контакт" aria-label="Обаждане до спешен контакт"><span class="emo">${ic('alert')}</span></a>` : ''}
     </div>`}
     <div class="sf-tabs" role="tablist">${tabs.map(([k, l], i) => `<button type="button" role="tab" class="sf-tab${i ? '' : ' active'}" data-tab="${k}" aria-selected="${!i}">${l}</button>`).join('')}</div>
     <div class="sf-alert" role="alert"></div>
@@ -3408,14 +3448,14 @@ function mountStaffFile(root, p, perms) {
     avBox.innerHTML = [1, 2, 3, 4, 5, 6, 7].map((wd) => {
       const blocks = av.filter((b) => b.weekday === wd).sort((a, b) => toMin(a.start_time) - toMin(b.start_time));
       return `<div class="av-day" data-wd="${wd}">
-        <div class="av-head"><b>${WD_LONG[wd]}</b>${perms.avail ? `<button type="button" class="sq-btn sm" data-act="add" title="Добави интервал" aria-label="Добави интервал за ${WD_LONG[wd]}">＋</button>` : ''}</div>
+        <div class="av-head"><b>${WD_LONG[wd]}</b>${perms.avail ? `<button type="button" class="sq-btn sm" data-act="add" title="Добави интервал" aria-label="Добави интервал за ${WD_LONG[wd]}">${ic('plus')}</button>` : ''}</div>
         <div class="av-blocks">${blocks.length ? blocks.map((b) => `<span class="av-chip">${t5(b.start_time)}–${t5(b.end_time) === '24:00' || b.end_time.startsWith('24') ? '24:00' : t5(b.end_time)}${perms.avail ? `<button type="button" data-del="${b.id}" aria-label="Премахни">×</button>` : ''}</span>`).join('') : '<span class="muted">не е свободен</span>'}</div>
         <form class="av-add" hidden novalidate>
           <input class="input" type="time" name="s" step="900" value="08:00" aria-label="От">
           <span>–</span>
           <input class="input" type="time" name="e" step="900" value="16:00" aria-label="До">
-          <button type="submit" class="sq-btn sm" title="Запази" aria-label="Запази">✓</button>
-          <button type="button" class="sq-btn sm" data-act="cancel" title="Откажи" aria-label="Откажи">×</button>
+          <button type="submit" class="sq-btn sm" title="Запази" aria-label="Запази">${ic('check')}</button>
+          <button type="button" class="sq-btn sm" data-act="cancel" title="Откажи" aria-label="Откажи">${ic('x')}</button>
         </form>
       </div>`;
     }).join('') + (perms.avail ? '<p class="note">Край „00:00“ означа до полунощ (24:00).</p>' : '');
@@ -3460,12 +3500,12 @@ function mountStaffFile(root, p, perms) {
     const total = rows.reduce((t, r) => t + Number(r.amount), 0);
     payBox.innerHTML = rows.length ? `<div class="pay-total">Общо изплатено: <b>${eur(total)}</b></div><div class="pay-list">${rows.map((r) => `
       <div class="pay-row"><div><b>${eur(r.amount)}</b><small>${fromLocal(r.paid_on).toLocaleDateString('bg-BG')} · ${r.method === 'bank' ? 'Банков превод' : 'В брой'}${r.note ? ' · ' + esc(r.note) : ''}</small></div>
-      ${isOwner() ? `<button type="button" class="sq-btn sm" data-delpay="${r.id}" title="Изтрий" aria-label="Изтрий плащането">🗑</button>` : ''}</div>`).join('')}</div>`
+      ${isOwner() ? `<button type="button" class="sq-btn sm" data-delpay="${r.id}" title="Изтрий" aria-label="Изтрий плащането">${ic('trash')}</button>` : ''}</div>`).join('')}</div>`
       : '<div class="empty">Все още няма плащания.</div>';
   };
   payBox.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-delpay]'); if (!b) return;
-    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.classList.add('armed'); b.textContent = '✓?'; b.title = 'Натиснете пак, за да изтриете'; return; }
+    if (b.dataset.armed !== '1') { b.dataset.armed = '1'; b.classList.add('armed'); b.innerHTML = ic('check'); b.title = 'Натиснете пак, за да изтриете'; return; }
     const { error } = await supabase.from('staff_payments').delete().eq('id', b.dataset.delpay);
     if (error) return alert('error', authMessage(error));
     toast('Плащането е изтрито.'); loadPays(); mountNumbersAgain();
