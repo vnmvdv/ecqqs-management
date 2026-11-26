@@ -1061,11 +1061,15 @@
   .fmonth { display: flex; align-items: center; gap: 6px; }
   .fm-label { background: none; border: 0; font-family: var(--font-display); font-size: 20px; font-weight: 700; min-width: 160px; text-align: center; cursor: pointer; color: var(--ink); text-transform: capitalize; }
   #f-src .chip { padding: 0 12px; font-size: 13px; }
-  .f-kpis { grid-template-columns: repeat(4, 1fr); margin-bottom: 10px; }
+  .f-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 10px; }
+  @media (max-width: 1250px) { .f-kpis:has(.two) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .f-kpis .stat { min-width: 0; overflow: hidden; }
+  .ftbl td.fmg { min-width: 210px; }
+  .fchart { max-height: 320px; }
   .f-kpis .val { font-size: 22px; }
   .fdelta { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 3px; font-family: var(--font-ui); }
   .fdelta.up { color: var(--ok); } .fdelta.down { color: var(--accent); }
-  .fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+  .fgrid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px; }
   .fcard { min-height: 0; margin-top: 12px; }
   .fgrid .fcard { margin-top: 0; }
   .fchart { width: 100%; height: auto; display: block; }
@@ -1105,10 +1109,9 @@
   .drow.tot { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; font-size: 14.5px; } .drow.tot .dv { color: var(--ok); }
   .drow.neg .dv { color: var(--accent); } .drow.neg .db i { background: var(--accent); }
   .f-kind { align-self: center; }
-  .stat.two .vv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
+  .stat.two .vv { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px 10px; margin-top: 6px; }
   .stat.two .vv small, .ov2 small { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-family: var(--font-ui); font-weight: 600; }
   .stat.two .vv b { font-family: var(--font-mono); font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .stat.two .vv > div + div { border-left: 1px solid var(--rule); padding-left: 8px; }
   .stat.two.gain .vv b { color: var(--ok); } .stat.two.loss .vv b { color: var(--accent); }
   .ov2 { display: grid; grid-template-columns: auto auto; gap: 14px; text-align: right; }
   .ov2 b { font-family: var(--font-mono); font-size: 18px; color: var(--ok); }
@@ -1128,7 +1131,7 @@
   .fset summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
   .fset summary h2 { margin: 0; } .fset[open] summary { margin-bottom: 12px; }
   .exp-form { margin-bottom: 10px; }
-  @media (max-width: 820px) { .fgrid { grid-template-columns: 1fr; } .f-kpis { grid-template-columns: 1fr 1fr; } .f-kpis .val { font-size: 18px; } .fm-label { min-width: 0; font-size: 18px; } }
+  @media (max-width: 820px) { .f-kpis { grid-template-columns: 1fr 1fr; } .f-kpis .val { font-size: 18px; } .fm-label { min-width: 0; font-size: 18px; } }
   .pc-spec { font-size: 11.5px; color: var(--muted); margin-top: 3px; white-space: normal; line-height: 1.35; }
   .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 14px; }
   .spec-bools { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 0 10px; }
@@ -1384,7 +1387,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.33 — изпълнено и целият месец едно до друго</div>
+      <div class="version">v0.34 — финанси: подредба</div>
     </div>
   </aside>
 
@@ -4428,9 +4431,9 @@ function renderFinances() {
         ? `<thead><tr class="grp"><th></th><th colspan="3" class="gc">Изпълнено</th><th colspan="3" class="gc">Целият месец</th><th></th></tr>
             <tr><th>Обект</th><th class="r gs">Почист.</th><th class="r">Приход</th><th class="r">Печалба</th><th class="r gs">Почист.</th><th class="r">Приход</th><th class="r">Печалба</th><th>Марж</th></tr></thead>`
         : '<thead><tr><th>Обект</th><th class="r">Почист.</th><th class="r">Приход</th><th class="r">Печалба</th><th>Марж</th></tr></thead>'}<tbody>
-        ${prow.map((r) => { const H = health(r.m), d = ppD[r.p.id] || { n: 0, rev: 0, prof: 0 };
+        ${prow.map((r) => { const d = ppD[r.p.id] || { n: 0, rev: 0, prof: 0 };
           const trio = (x, gs) => `<td class="r${gs ? ' gs' : ''}">${x.n}</td><td class="r">${eur(x.rev)}</td><td class="r ${x.prof < 0 ? 'neg' : ''}">${eur(x.prof)}</td>`;
-          return `<tr><td><b>${esc(FD.cname[r.p.client_id] || '')}</b><small>${esc(r.p.name)}</small></td>${cmp ? trio(d, true) + trio(r, true) : trio(r)}<td><span class="hbadge hb-${H.k}">${Math.round(r.m)}% · ${H.label}</span></td></tr>`; }).join('')}
+          return `<tr><td><b>${esc(FD.cname[r.p.client_id] || '')}</b><small>${esc(r.p.name)}</small></td>${cmp ? trio(d, true) + trio(r, true) : trio(r)}<td class="fmg">${marginMeterHTML(r.m, `${cmp ? 'целият месец · ' : ''}${eur(r.prof)} от ${eur(r.rev)}`)}</td></tr>`; }).join('')}
       </tbody></table></div><p class="note">Печалба = приход − заплати − постоянни разходи ${eur(BIZ.overheadPerHour)}/ч − материали ${eur(FIN.matPerHour)}/ч (преди данък). Най-слабите са първи.</p>` : '<div class="empty sm">Няма почиствания с цена за този месец.</div>'}
     </div>
 
