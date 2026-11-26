@@ -603,6 +603,17 @@
   .ev-colors input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
   @media (max-width: 560px) { .ev-colors { grid-template-columns: repeat(6, 1fr); } }
 
+
+  /* calendar period change animation */
+  @keyframes calInNext { from { transform: translateX(36px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes calInPrev { from { transform: translateX(-36px); opacity: 0; } to { transform: none; opacity: 1; } }
+  @keyframes calInFade { from { transform: scale(.985); opacity: 0; } to { transform: none; opacity: 1; } }
+  .cal-in-next { animation: calInNext .26s cubic-bezier(.2,.7,.2,1); }
+  .cal-in-prev { animation: calInPrev .26s cubic-bezier(.2,.7,.2,1); }
+  .cal-in-fade { animation: calInFade .22s ease-out; }
+  #cal .fc-view-harness { overflow: hidden; }
+  #sec-calendar { overflow-x: hidden; }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -2075,7 +2086,7 @@ async function showCalendar() {
       selectable: canManageCal(), selectMirror: true, selectLongPressDelay: 250, eventLongPressDelay: 350,
       editable: canManageCal(), eventDurationEditable: true, eventStartEditable: true,
       events: fetchEvents,
-      datesSet: () => { setCalTitle(); markView(); ls.set(CAL_VIEW_KEY, calendar.view.type); },
+      datesSet: () => { setCalTitle(); markView(); ls.set(CAL_VIEW_KEY, calendar.view.type); animateCal(); },
       select: (info) => { calendar.unselect(); openEventForm({ start: info.start, end: info.end, allDay: info.allDay }); },
       dateClick: (info) => {
         if (!canManageCal()) return;
@@ -2095,10 +2106,50 @@ async function showCalendar() {
   setCalTitle(); markView();
 }
 
-$('cal-prev').addEventListener('click', () => calendar?.prev());
-$('cal-next').addEventListener('click', () => calendar?.next());
-$('cal-today').addEventListener('click', () => calendar?.today());
-document.querySelectorAll('.cal-views [data-view]').forEach((b) => b.addEventListener('click', () => calendar?.changeView(b.dataset.view)));
+/* Slide/fade animation so moving between days/weeks/months is obvious */
+let calDir = 0, calFirstPaint = true;
+function animateCal() {
+  if (calFirstPaint) { calFirstPaint = false; calDir = 0; return; }
+  const cls = calDir > 0 ? 'cal-in-next' : calDir < 0 ? 'cal-in-prev' : 'cal-in-fade';
+  calDir = 0;
+  [$('cal').querySelector('.fc-view-harness'), $('cal-title')].forEach((el) => {
+    if (!el) return;
+    el.classList.remove('cal-in-next', 'cal-in-prev', 'cal-in-fade');
+    void el.offsetWidth; // restart the animation
+    el.classList.add(cls);
+  });
+}
+function calGo(dir) {
+  if (!calendar) return;
+  calDir = dir;
+  if (dir > 0) calendar.next(); else if (dir < 0) calendar.prev();
+  else {
+    const before = calendar.view.currentStart.getTime();
+    calendar.today();
+    if (calendar.view.currentStart.getTime() === before) { calDir = 0; animateCal(); } // already on today: still give feedback
+  }
+}
+$('cal-prev').addEventListener('click', () => calGo(-1));
+$('cal-next').addEventListener('click', () => calGo(1));
+$('cal-today').addEventListener('click', () => calGo(0));
+document.querySelectorAll('.cal-views [data-view]').forEach((b) => b.addEventListener('click', () => { calDir = 0; calendar?.changeView(b.dataset.view); }));
+// Swipe left/right on the calendar to go forward/back (phones & tablets)
+(() => {
+  let x0 = null, y0 = null, t0 = 0;
+  const el = $('cal');
+  el.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) { x0 = null; return; }
+    x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; t0 = Date.now();
+  }, { passive: true });
+  el.addEventListener('touchend', (e) => {
+    if (x0 === null) return;
+    const dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+    x0 = null;
+    if (Date.now() - t0 > 600) return;                 // slow drags are for selecting/moving events
+    if (document.querySelector('#cal .fc-event-dragging, #cal .fc-event-resizing, #cal .fc-highlight')) return;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.6) calGo(dx < 0 ? 1 : -1);
+  }, { passive: true });
+})();
 $('cal-people').addEventListener('change', () => { ls.set(CAL_PEOPLE_KEY, $('cal-people').value); calendar?.refetchEvents(); });
 $('cal-add').addEventListener('click', () => {
   const base = calendar ? calendar.getDate() : new Date(); const now = new Date();
