@@ -666,6 +666,23 @@
   .pay-form { margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid var(--rule); }
   @media (max-width: 380px) { .sf-stats { grid-template-columns: 1fr; } }
 
+
+  /* ---------- Clients ---------- */
+  .emo-av { background: var(--card) !important; color: var(--ink) !important; border: 1px solid var(--rule); font-size: 20px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .seg label { margin: 0; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .seg span { display: grid; place-items: center; min-height: 44px; border: 1.5px solid var(--rule); border-radius: var(--radius); font-weight: 600; font-size: 14px; }
+  .seg input:checked + span { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
+  .seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .prop-mini { border: 1px solid var(--rule); border-radius: var(--radius); padding: 6px 8px; }
+  .prop-mini summary { display: flex; gap: 10px; align-items: center; cursor: pointer; list-style: none; font-weight: 600; font-size: 14px; }
+  .prop-mini summary::-webkit-details-marker { display: none; }
+  .prop-mini summary small { display: block; color: var(--muted); font-weight: 400; font-size: 12px; }
+  .prop-mini summary .avatar { width: 32px; height: 32px; font-size: 16px; flex-shrink: 0; }
+  .prop-mini[open] summary { margin-bottom: 8px; }
+  .prop-mini dd { white-space: pre-wrap; overflow-wrap: anywhere; }
+
   /* ---------- Toast ---------- */
   #toast {
     position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(20px);
@@ -858,7 +875,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.16 — досие v2</div>
+      <div class="version">v0.17 — клиенти</div>
     </div>
   </aside>
 
@@ -905,6 +922,25 @@
         <select class="input cal-people" id="cal-people" aria-label="Чии събития" hidden></select>
       </div>
       <div id="cal"></div>
+    </section>
+
+    <!-- Clients -->
+    <section class="sec" id="sec-clients" hidden>
+      <header><h1>Клиенти</h1></header>
+      <div class="toolbar">
+        <input class="input search" id="c-search" type="search" placeholder="Търсене по име, контакт, ЕИК или адрес" autocomplete="off" aria-label="Търсене">
+      </div>
+      <div class="toolbar sqrow">
+        <button class="sq-btn" id="c-add" title="Нов клиент" aria-label="Нов клиент" hidden><span class="emo" aria-hidden="true">➕</span></button>
+        <div class="chips" id="c-filters" role="group" aria-label="Филтър по статус">
+          <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true">⚪</span><span class="n"></span></button>
+          <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true">🟢</span><span class="n"></span></button>
+          <button class="chip icon" data-f="prospect" title="Потенциални" aria-label="Потенциални" aria-pressed="false"><span class="emo" aria-hidden="true">🟡</span><span class="n"></span></button>
+          <button class="chip icon" data-f="paused" title="На пауза" aria-label="На пауза" aria-pressed="false"><span class="emo" aria-hidden="true">⏸️</span><span class="n"></span></button>
+          <button class="chip icon" data-f="ended" title="Приключили" aria-label="Приключили" aria-pressed="false"><span class="emo" aria-hidden="true">🔴</span><span class="n"></span></button>
+        </div>
+      </div>
+      <div class="ulist" id="c-list" aria-live="polite"></div>
     </section>
 
     <!-- Users -->
@@ -1096,6 +1132,22 @@
     </form>
   </div>
 </dialog>
+
+<!-- Client file -->
+<dialog class="sheet wide" id="dlg-client" aria-label="Клиент">
+  <div class="sheet-inner">
+    <button class="x" data-close aria-label="Затвори">×</button>
+    <div id="cl-root"></div>
+  </div>
+</dialog>
+<!-- Property -->
+<dialog class="sheet wide" id="dlg-prop" aria-label="Обект">
+  <div class="sheet-inner">
+    <button class="x" data-close aria-label="Затвори">×</button>
+    <div id="pr-root"></div>
+  </div>
+</dialog>
+<datalist id="cl-sources"><option>Препоръка</option><option>Google</option><option>Facebook</option><option>Instagram</option><option>Сайт evercleanqqs.com</option><option>Обаждане</option><option>Флаер</option></datalist>
 
 <!-- Staff file -->
 <dialog class="sheet wide" id="dlg-staff" aria-label="Досие на служител">
@@ -1535,6 +1587,7 @@ let users = [];           // loaded profiles
 const SECTIONS = [
   { id: 'dashboard', label: 'Табло', roles: null },
   { id: 'calendar', label: 'Календар', roles: ['owner', 'manager', 'cleaner'] },
+  { id: 'clients', label: 'Клиенти', roles: ['owner', 'manager', 'accountant'] },
   { id: 'staff', label: 'Персонал', labelFor: { cleaner: 'Моето досие' }, roles: ['owner', 'manager', 'cleaner'] },
   { id: 'users', label: 'Потребители', roles: ['owner', 'manager'] },
 ];
@@ -1591,6 +1644,7 @@ function go(id) {
   if (id === 'users') loadUsers();
   if (id === 'staff') loadStaff();
   if (id === 'calendar') showCalendar();
+  if (id === 'clients') loadClients();
   window.scrollTo({ top: 0 });
 }
 
@@ -2462,6 +2516,340 @@ $('ev-form').addEventListener('submit', async (e) => {
 });
 
 
+
+/* ---------- Clients & properties ---------- */
+const CL_STATUS = { prospect: 'Потенциален', active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
+const CL_STATUS_EMO = { prospect: '🟡', active: '🟢', paused: '⏸️', ended: '🔴' };
+const PR_KIND = { office: ['🏢', 'Офис'], home: ['🏠', 'Дом'], shop: ['🏬', 'Магазин'], building: ['🏘️', 'Вход / сграда'], venue: ['🏛️', 'Заведение / зала'], other: ['📍', 'Друго'] };
+const PR_STATUS = { active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
+const PRICE_MODEL = { visit: 'на посещение', hour: 'на час', month: 'месечно' };
+const PAY_METHOD = { bank: 'Банков превод', cash: 'В брой', card: 'Карта' };
+let clients = [];
+let cFilter = 'all';
+const canManageClients = () => ['owner', 'manager'].includes(me?.role) && me?.status === 'active';
+const mapsHref = (a) => 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(a || '');
+const monthlyValue = (props) => (props || []).filter((p) => p.status === 'active' && p.price_model === 'month').reduce((t, p) => t + (Number(p.price) || 0), 0);
+
+async function loadClients() {
+  $('c-add').hidden = !canManageClients();
+  if (!clients.length) $('c-list').innerHTML = '<div class="empty">Зареждане…</div>';
+  const { data, error } = await supabase.from('clients').select('*, properties(id,name,status,price,price_model,address)').order('name');
+  if (error) { $('c-list').innerHTML = `<div class="empty">Неуспешно зареждане. ${esc(authMessage(error))}</div>`; return; }
+  clients = data || [];
+  renderClients();
+}
+function renderClients() {
+  const q = $('c-search').value.trim().toLowerCase();
+  const counts = { all: clients.length };
+  clients.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
+  document.querySelectorAll('#c-filters .chip').forEach((ch) => { ch.querySelector('.n').textContent = counts[ch.dataset.f] || 0; });
+  const order = { active: 0, prospect: 1, paused: 2, ended: 3 };
+  const list = clients.filter((c) => (cFilter === 'all' || c.status === cFilter) &&
+    (!q || [c.name, c.legal_name, c.contact_name, c.contact_phone, c.contact_email, c.eik, ...(c.properties || []).flatMap((p) => [p.name, p.address])]
+      .some((v) => (v || '').toLowerCase().includes(q))))
+    .sort((a, b) => (order[a.status] - order[b.status]) || a.name.localeCompare(b.name, 'bg'));
+  if (!list.length) { $('c-list').innerHTML = `<div class="empty">${q || cFilter !== 'all' ? 'Няма съвпадения.' : 'Все още няма клиенти. Натиснете ➕, за да добавите първия.'}</div>`; return; }
+  $('c-list').innerHTML = list.map((c) => {
+    const n = (c.properties || []).length, mv = monthlyValue(c.properties);
+    return `<button class="urow" data-id="${c.id}">
+      <div class="avatar emo-av">${c.kind === 'person' ? '👤' : '🏢'}</div>
+      <div style="min-width:0">
+        <div class="nm">${esc(c.name)}</div>
+        <div class="sub">${n} ${n === 1 ? 'обект' : 'обекта'}${c.contact_name ? ' · ' + esc(c.contact_name) : ''}${c.contact_phone ? ' · ' + esc(c.contact_phone) : ''}</div>
+      </div>
+      <div class="tags">
+        ${mv ? `<span class="badge">${eur(mv)}/мес</span>` : ''}
+        <span class="badge ${c.status === 'active' ? 'active' : c.status === 'ended' ? 'disabled' : 'pending'}">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}</span>
+      </div>
+    </button>`;
+  }).join('');
+}
+$('c-list').addEventListener('click', (e) => { const r = e.target.closest('.urow'); if (r) openClient(r.dataset.id); });
+$('c-search').addEventListener('input', renderClients);
+document.querySelectorAll('#c-filters .chip').forEach((ch) => ch.addEventListener('click', () => {
+  cFilter = ch.dataset.f;
+  document.querySelectorAll('#c-filters .chip').forEach((x) => { x.classList.toggle('active', x === ch); x.setAttribute('aria-pressed', String(x === ch)); });
+  renderClients();
+}));
+$('c-add').addEventListener('click', () => openClient(null));
+
+/* --- client file --- */
+let clCurrent = null;
+function clientDataForm(c, manage) {
+  const v = (k) => esc(c?.[k] ?? '');
+  return `<form class="cl-form" novalidate>
+    <div class="field"><label>Вид</label>
+      <div class="seg"><label><input type="radio" name="kind" value="company" ${c?.kind !== 'person' ? 'checked' : ''}><span>🏢 Фирма</span></label>
+      <label><input type="radio" name="kind" value="person" ${c?.kind === 'person' ? 'checked' : ''}><span>👤 Физическо лице</span></label></div></div>
+    <div class="field"><label>Име на клиента</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Тех Офис ООД / Мария Петрова"></div>
+    <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(CL_STATUS).map(([k, l]) => `<option value="${k}" ${(c?.status || 'active') === k ? 'selected' : ''}>${CL_STATUS_EMO[k]} ${l}</option>`).join('')}</select></div>
+    <div class="sf-group">Основен контакт</div>
+    <div class="field"><label>Име</label><input class="input" name="contact_name" value="${v('contact_name')}" autocomplete="off"></div>
+    <div class="two">
+      <div class="field"><label>Телефон</label><input class="input" name="contact_phone" type="tel" inputmode="tel" value="${v('contact_phone')}" autocomplete="off" placeholder="+359…"></div>
+      <div class="field"><label>Имейл</label><input class="input" name="contact_email" type="email" inputmode="email" value="${v('contact_email')}" autocomplete="off"></div>
+    </div>
+    <div class="sf-group">Данни за фактура</div>
+    <div class="field"><label>Юридическо име</label><input class="input" name="legal_name" value="${v('legal_name')}" autocomplete="off" placeholder="напр. ТЕХ ОФИС ООД"></div>
+    <div class="two">
+      <div class="field"><label>ЕИК / Булстат</label><input class="input" name="eik" value="${v('eik')}" inputmode="numeric" autocomplete="off"></div>
+      <div class="field"><label>ДДС номер</label><input class="input" name="vat_number" value="${v('vat_number')}" autocomplete="off" placeholder="BG…"></div>
+    </div>
+    <div class="field"><label>МОЛ</label><input class="input" name="mol" value="${v('mol')}" autocomplete="off"></div>
+    <div class="field"><label>Адрес за фактура</label><input class="input" name="billing_address" value="${v('billing_address')}" autocomplete="off"></div>
+    <div class="field"><label>Имейл за фактури</label><input class="input" name="billing_email" type="email" inputmode="email" value="${v('billing_email')}" autocomplete="off"></div>
+    <div class="sf-group">Друго</div>
+    <div class="field"><label>Откъде дойде</label><input class="input" name="source" value="${v('source')}" autocomplete="off" list="cl-sources" placeholder="напр. препоръка, Google, Facebook"></div>
+    <div class="field"><label>Бележки</label><textarea class="input" name="notes" rows="3">${v('notes')}</textarea></div>
+    ${manage ? `<div class="actions"><button class="btn" type="submit"><span class="label">${c ? 'Запази' : 'Създай клиент'}</span></button>
+      ${c && isOwner() ? '<button class="btn ghost-danger" type="button" data-act="del"><span class="label">Изтрий клиента</span></button>' : ''}</div>` : ''}
+  </form>`;
+}
+
+function openClient(id) {
+  const manage = canManageClients();
+  clCurrent = id ? clients.find((c) => c.id === id) : null;
+  const root = $('cl-root');
+  if (!clCurrent) {
+    root.innerHTML = `<h2>Нов клиент</h2><div class="sf-alert" role="alert"></div>${clientDataForm(null, true)}`;
+    bindClientForm(root, null);
+    $('dlg-client').showModal();
+    return;
+  }
+  renderClientFile(root, clCurrent, manage);
+  $('dlg-client').showModal();
+}
+
+function renderClientFile(root, c, manage, tab = 'sum') {
+  const tabs = [['sum', 'Обобщение'], ['props', 'Обекти'], ['data', 'Данни']].concat(manage ? [['access', 'Достъп']] : []);
+  const props = c.properties || [];
+  const active = props.filter((p) => p.status === 'active').length;
+  root.innerHTML = `
+    <div class="pf-head">
+      <div class="avatar pf-avatar emo-av">${c.kind === 'person' ? '👤' : '🏢'}</div>
+      <div style="min-width:0"><h2 class="sf-name">${esc(c.name)}</h2>
+        <div class="pf-sub">${CL_STATUS_EMO[c.status]} ${esc(CL_STATUS[c.status])}${c.legal_name ? ' · ' + esc(c.legal_name) : ''}</div></div>
+    </div>
+    <div class="sf-quick">
+      <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? telHref(c.contact_phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">📞</span></a>
+      <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? viberHref(c.contact_phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">💬</span></a>
+      <a class="sq-btn ${c.contact_email ? '' : 'off'}" href="${c.contact_email ? 'mailto:' + esc(c.contact_email) : '#'}" title="Имейл" aria-label="Имейл"><span class="emo">✉️</span></a>
+    </div>
+    <div class="sf-tabs" style="grid-template-columns:repeat(${tabs.length},1fr)" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sf-tab${k === tab ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
+    <div class="sf-alert" role="alert"></div>
+    <div class="sf-pane" data-pane="sum" ${tab === 'sum' ? '' : 'hidden'}>
+      <div class="sf-stats">
+        <div class="stat"><div class="lbl">Обекти</div><div class="val">${active} активни${props.length !== active ? ` / ${props.length}` : ''}</div></div>
+        <div class="stat"><div class="lbl">Месечни договори</div><div class="val">${eur(monthlyValue(props))}</div></div>
+      </div>
+      <dl class="pf-dl ev-v-dl">
+        ${c.contact_name ? `<dt>Контакт</dt><dd>${esc(c.contact_name)}</dd>` : ''}
+        ${c.contact_phone ? `<dt>Телефон</dt><dd><a href="${telHref(c.contact_phone)}">${esc(c.contact_phone)}</a></dd>` : ''}
+        ${c.contact_email ? `<dt>Имейл</dt><dd><a href="mailto:${esc(c.contact_email)}">${esc(c.contact_email)}</a></dd>` : ''}
+        ${c.eik ? `<dt>ЕИК</dt><dd>${esc(c.eik)}</dd>` : ''}
+        ${c.source ? `<dt>Откъде</dt><dd>${esc(c.source)}</dd>` : ''}
+        ${c.notes ? `<dt>Бележки</dt><dd>${esc(c.notes)}</dd>` : ''}
+        <dt>Клиент от</dt><dd>${new Date(c.created_at).toLocaleDateString('bg-BG')}</dd>
+      </dl>
+    </div>
+    <div class="sf-pane" data-pane="props" ${tab === 'props' ? '' : 'hidden'}>
+      ${manage ? '<div class="actions" style="margin:0 0 12px"><button class="btn" type="button" data-act="add-prop"><span class="label">➕ Нов обект</span></button></div>' : ''}
+      <div class="ulist">${props.length ? props.slice().sort((a, b) => a.name.localeCompare(b.name, 'bg')).map((p) => `
+        <button class="urow" type="button" data-prop="${p.id}">
+          <div class="avatar emo-av">${(PR_KIND[p.kind] || PR_KIND.other)[0]}</div>
+          <div style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="sub">${esc(p.address || 'без адрес')}</div></div>
+          <div class="tags">${p.price != null ? `<span class="badge">${eur(p.price)} ${PRICE_MODEL[p.price_model]}</span>` : ''}${p.status !== 'active' ? `<span class="badge pending">${esc(PR_STATUS[p.status])}</span>` : ''}</div>
+        </button>`).join('') : '<div class="empty">Няма обекти.</div>'}</div>
+    </div>
+    <div class="sf-pane" data-pane="data" ${tab === 'data' ? '' : 'hidden'}>${clientDataForm(c, manage)}</div>
+    ${manage ? `<div class="sf-pane" data-pane="access" ${tab === 'access' ? '' : 'hidden'}>
+      <p class="lead">Потребители с роля „Клиент“, които виждат този клиент и неговите обекти, когато влязат в системата.</p>
+      <div data-k="cusers"><div class="empty">Зареждане…</div></div>
+    </div>` : ''}`;
+  if (!manage) root.querySelectorAll('.cl-form input, .cl-form select, .cl-form textarea').forEach((x) => { x.disabled = true; });
+  root.querySelectorAll('.sf-tab').forEach((t) => t.addEventListener('click', () => {
+    root.querySelectorAll('.sf-tab').forEach((x) => x.classList.toggle('active', x === t));
+    root.querySelectorAll('.sf-pane').forEach((pn) => { pn.hidden = pn.dataset.pane !== t.dataset.tab; });
+    if (t.dataset.tab === 'access') loadClientUsers(root, c);
+  }));
+  root.querySelector('[data-act="add-prop"]')?.addEventListener('click', () => openProperty(c, null));
+  root.querySelectorAll('[data-prop]').forEach((b) => b.addEventListener('click', () => openProperty(c, b.dataset.prop)));
+  bindClientForm(root, c);
+  if (tab === 'access') loadClientUsers(root, c);
+}
+
+function clAlert(root, type, text) {
+  const el = root.querySelector('.sf-alert'); if (!el) return;
+  if (!text) { el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="alert ${type}">${ICONS[type]}<span></span></div>`; el.querySelector('span').textContent = text;
+}
+
+async function refreshClient(id, tab) {
+  const { data } = await supabase.from('clients').select('*, properties(*)').eq('id', id).maybeSingle();
+  if (!data) return;
+  const i = clients.findIndex((c) => c.id === id); if (i >= 0) clients[i] = data; else clients.push(data);
+  clCurrent = data; renderClients();
+  if ($('dlg-client').open) renderClientFile($('cl-root'), data, canManageClients(), tab);
+}
+
+function bindClientForm(root, c) {
+  const f = root.querySelector('.cl-form'); if (!f) return;
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const v = (n) => (f[n]?.value || '').trim() || null;
+    const row = { kind: f.querySelector('input[name="kind"]:checked').value, name: v('name'), status: v('status') || 'active',
+      contact_name: v('contact_name'), contact_phone: v('contact_phone'), contact_email: v('contact_email'),
+      legal_name: v('legal_name'), eik: v('eik'), vat_number: v('vat_number'), mol: v('mol'), billing_address: v('billing_address'), billing_email: v('billing_email'),
+      source: v('source'), notes: v('notes') };
+    if (!row.name) { clAlert(root, 'error', 'Въведете име на клиента.'); return f.name.focus(); }
+    for (const k of ['contact_email', 'billing_email']) if (row[k] && !validEmail(row[k])) return clAlert(root, 'error', 'Невалиден имейл.');
+    if (row.eik && !/^\d{9}(\d{4})?$/.test(row.eik.replace(/\s/g, ''))) return clAlert(root, 'error', 'ЕИК трябва да е 9 или 13 цифри.');
+    const btn = f.querySelector('button[type="submit"]'); busy(btn, true, 'Запазване…');
+    const res = c ? await supabase.from('clients').update(row).eq('id', c.id).select('id').single()
+                  : await supabase.from('clients').insert(row).select('id').single();
+    busy(btn, false);
+    if (res.error) return clAlert(root, 'error', authMessage(res.error));
+    toast(c ? 'Клиентът е запазен.' : 'Клиентът е създаден.');
+    await refreshClient(res.data.id, c ? 'data' : 'props');
+  });
+  const del = f.querySelector('[data-act="del"]');
+  del?.addEventListener('click', async () => {
+    if (del.dataset.armed !== '1') {
+      del.dataset.armed = '1'; del.className = 'btn danger'; del.querySelector('.label').textContent = 'Потвърди — изтрий завинаги';
+      clAlert(root, 'info', 'Ще бъдат изтрити клиентът и всички негови обекти. Ако клиентът просто е спрял, сменете статуса на „Приключил“.');
+      return;
+    }
+    const { error } = await supabase.from('clients').delete().eq('id', c.id);
+    if (error) return clAlert(root, 'error', authMessage(error));
+    $('dlg-client').close(); toast('Клиентът е изтрит.'); clients = clients.filter((x) => x.id !== c.id); renderClients();
+  });
+}
+
+async function loadClientUsers(root, c) {
+  const box = root.querySelector('[data-k="cusers"]'); if (!box) return;
+  const [{ data: links }, { data: cu }] = await Promise.all([
+    supabase.from('client_users').select('user_id').eq('client_id', c.id),
+    supabase.from('profiles').select('id,email,fname,lname,status').eq('role', 'client'),
+  ]);
+  const linked = new Set((links || []).map((l) => l.user_id));
+  const all = cu || [];
+  const mine = all.filter((u) => linked.has(u.id)), rest = all.filter((u) => !linked.has(u.id) && u.status !== 'disabled');
+  box.innerHTML = `${mine.length ? `<div class="mini-list">${mine.map((u) => `<div class="mini"><span class="avatar">${esc(initials(u))}</span><span style="flex:1;min-width:0">${esc(fullName(u) || u.email)}<small>${esc(u.email)}</small></span><button class="sq-btn sm" type="button" data-unlink="${u.id}" title="Премахни достъпа" aria-label="Премахни достъпа">×</button></div>`).join('')}</div>`
+    : '<div class="empty sm">Никой още няма достъп.</div>'}
+    ${rest.length ? `<div class="two" style="margin-top:12px"><select class="input" data-k="pick"><option value="">Изберете потребител…</option>${rest.map((u) => `<option value="${u.id}">${esc((fullName(u) || u.email) + ' — ' + u.email)}</option>`).join('')}</select>
+      <button class="btn secondary" type="button" data-act="link"><span class="label">Дай достъп</span></button></div>` : ''}
+    <p class="note">За нов човек: създайте го в „Потребители“ с роля „Клиент“, после го изберете тук.</p>`;
+  box.querySelectorAll('[data-unlink]').forEach((b) => b.addEventListener('click', async () => {
+    const { error } = await supabase.from('client_users').delete().eq('client_id', c.id).eq('user_id', b.dataset.unlink);
+    if (error) return clAlert(root, 'error', authMessage(error));
+    loadClientUsers(root, c);
+  }));
+  box.querySelector('[data-act="link"]')?.addEventListener('click', async () => {
+    const uid = box.querySelector('[data-k="pick"]').value; if (!uid) return;
+    const { error } = await supabase.from('client_users').insert({ client_id: c.id, user_id: uid });
+    if (error) return clAlert(root, 'error', authMessage(error));
+    toast('Достъпът е даден.'); loadClientUsers(root, c);
+  });
+}
+
+/* --- property sheet --- */
+let prClient = null, prRow = null;
+async function openProperty(c, id) {
+  prClient = c; prRow = id ? (c.properties || []).find((p) => p.id === id) : null;
+  if (id && (!prRow || !('access_info' in prRow))) { const { data } = await supabase.from('properties').select('*').eq('id', id).maybeSingle(); prRow = data; }
+  const manage = canManageClients();
+  const p = prRow || {};
+  const v = (k) => esc(p[k] ?? '');
+  const [{ data: cleaners }, { data: assigned }] = await Promise.all([
+    supabase.from('profiles').select('id,email,fname,lname,role,is_dev,status').in('role', ['cleaner', 'manager']).neq('status', 'disabled'),
+    id ? supabase.from('property_staff').select('user_id').eq('property_id', id) : Promise.resolve({ data: [] }),
+  ]);
+  const sel = new Set((assigned || []).map((a) => a.user_id));
+  const people = (cleaners || []).sort((a, b) => (a.is_dev - b.is_dev) || (a.role === 'cleaner' ? -1 : 1) - (b.role === 'cleaner' ? -1 : 1) || (fullName(a) || a.email).localeCompare(fullName(b) || b.email, 'bg'));
+  $('pr-root').innerHTML = `
+    <h2>${id ? esc(p.name) : 'Нов обект'}</h2>
+    <p class="lead">${esc(c.name)}</p>
+    ${id && p.address ? `<div class="sf-quick"><a class="sq-btn" href="${mapsHref(p.address)}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">🗺️</span></a>
+      ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">📞</span></a>` : ''}</div>` : ''}
+    <div class="sf-alert" role="alert"></div>
+    <form class="pr-form" novalidate>
+      <div class="field"><label>Име на обекта</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Офис Лозенец, ет. 3"></div>
+      <div class="two">
+        <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [e, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${e} ${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(PR_STATUS).map(([k, l]) => `<option value="${k}" ${(p.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      </div>
+      <div class="sf-group">Местоположение</div>
+      <div class="field"><label>Адрес</label><input class="input" name="address" value="${v('address')}" autocomplete="off"></div>
+      <div class="two">
+        <div class="field"><label>Район</label><input class="input" name="district" value="${v('district')}" list="sofia-districts" autocomplete="off"></div>
+        <div class="field"><label>Площ (м²)</label><input class="input" name="area_m2" type="number" min="0" step="1" inputmode="decimal" value="${v('area_m2')}"></div>
+      </div>
+      <div class="field"><label>Достъп</label><textarea class="input" name="access_info" rows="2" placeholder="ключове, кодове, вход, паркинг…">${v('access_info')}</textarea></div>
+      <div class="sf-group">Контакт на място</div>
+      <div class="field"><label>Име</label><input class="input" name="contact_name" value="${v('contact_name')}" autocomplete="off"></div>
+      <div class="two">
+        <div class="field"><label>Телефон</label><input class="input" name="contact_phone" type="tel" inputmode="tel" value="${v('contact_phone')}" autocomplete="off"></div>
+        <div class="field"><label>Имейл</label><input class="input" name="contact_email" type="email" inputmode="email" value="${v('contact_email')}" autocomplete="off"></div>
+      </div>
+      <div class="sf-group">Договор и цена</div>
+      <div class="two">
+        <div class="field"><label>Начало</label><input class="input" name="contract_start" type="date" value="${v('contract_start')}"></div>
+        <div class="field"><label>Край</label><input class="input" name="contract_end" type="date" value="${v('contract_end')}"></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Цена (€)</label><input class="input" name="price" type="number" min="0" step="0.01" inputmode="decimal" value="${v('price')}"></div>
+        <div class="field"><label>Цената е</label><select class="input" name="price_model">${Object.entries(PRICE_MODEL).map(([k, l]) => `<option value="${k}" ${(p.price_model || 'visit') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>Плащане</label><select class="input" name="payment_method">${Object.entries(PAY_METHOD).map(([k, l]) => `<option value="${k}" ${(p.payment_method || 'bank') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" name="invoice" ${p.invoice === false ? '' : 'checked'}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>Издава се фактура</label></div>
+      </div>
+      <div class="sf-group">Работа</div>
+      <div class="field"><label>График</label><input class="input" name="schedule_note" value="${v('schedule_note')}" autocomplete="off" placeholder="напр. пн, ср, пт 07:00–09:00"></div>
+      <div class="field"><label>Протокол (какво се почиства)</label><textarea class="input" name="protocol" rows="4" placeholder="Всеки ред — една задача">${v('protocol')}</textarea></div>
+      <div class="field"><label>Хигиенисти на обекта</label>
+        <div class="ev-people">${people.length ? people.map((u) => `<label><input type="checkbox" name="staff" value="${u.id}" ${sel.has(u.id) ? 'checked' : ''}><span class="avatar">${esc(initials(u))}</span><span>${esc(fullName(u) || u.email)}${u.is_dev ? ' (тест)' : ''}<small>${esc(ROLE_LABELS[u.role])}</small></span></label>`).join('') : '<div class="hint">Няма хигиенисти.</div>'}</div></div>
+      <div class="field"><label>Бележки</label><textarea class="input" name="notes" rows="2">${v('notes')}</textarea></div>
+      ${manage ? `<div class="actions"><button class="btn" type="submit"><span class="label">${id ? 'Запази' : 'Създай обект'}</span></button>
+        ${id ? '<button class="btn ghost-danger" type="button" data-act="del"><span class="label">Изтрий обекта</span></button>' : ''}</div>` : ''}
+    </form>`;
+  const root = $('pr-root'), f = root.querySelector('.pr-form');
+  if (!manage) f.querySelectorAll('input, select, textarea').forEach((x) => { x.disabled = true; });
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const val = (n) => (f[n]?.value || '').trim() || null;
+    const num = (n) => { const x = val(n); return x === null ? null : Number(String(x).replace(',', '.')); };
+    const row = { client_id: c.id, name: val('name'), kind: val('kind'), status: val('status'), address: val('address'), district: val('district'),
+      area_m2: num('area_m2'), access_info: val('access_info'), contact_name: val('contact_name'), contact_phone: val('contact_phone'), contact_email: val('contact_email'),
+      contract_start: val('contract_start'), contract_end: val('contract_end'), price: num('price'), price_model: val('price_model'),
+      payment_method: val('payment_method'), invoice: f.invoice.checked, schedule_note: val('schedule_note'), protocol: val('protocol'), notes: val('notes') };
+    if (!row.name) { clAlert(root, 'error', 'Въведете име на обекта.'); return f.name.focus(); }
+    if (row.contract_start && row.contract_end && row.contract_end < row.contract_start) return clAlert(root, 'error', 'Краят на договора е преди началото.');
+    if (row.contact_email && !validEmail(row.contact_email)) return clAlert(root, 'error', 'Невалиден имейл.');
+    const staffIds = [...f.querySelectorAll('input[name="staff"]:checked')].map((x) => x.value);
+    const btn = f.querySelector('button[type="submit"]'); busy(btn, true, 'Запазване…');
+    try {
+      let pid = prRow?.id;
+      if (pid) { const { error } = await supabase.from('properties').update(row).eq('id', pid); if (error) throw error; }
+      else { const { data, error } = await supabase.from('properties').insert(row).select('id').single(); if (error) throw error; pid = data.id; }
+      const add = staffIds.filter((x) => !sel.has(x)), rem = [...sel].filter((x) => !staffIds.includes(x));
+      if (rem.length) { const { error } = await supabase.from('property_staff').delete().eq('property_id', pid).in('user_id', rem); if (error) throw error; }
+      if (add.length) { const { error } = await supabase.from('property_staff').insert(add.map((u) => ({ property_id: pid, user_id: u }))); if (error) throw error; }
+      $('dlg-prop').close(); toast(prRow ? 'Обектът е запазен.' : 'Обектът е създаден.');
+      refreshClient(c.id, 'props');
+    } catch (err) { clAlert(root, 'error', authMessage(err)); }
+    finally { busy(btn, false); }
+  });
+  const del = f.querySelector('[data-act="del"]');
+  del?.addEventListener('click', async () => {
+    if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.className = 'btn danger'; del.querySelector('.label').textContent = 'Потвърди изтриване'; clAlert(root, 'info', 'Обектът ще бъде изтрит завинаги. Ако само е спрял, сменете статуса.'); return; }
+    const { error } = await supabase.from('properties').delete().eq('id', prRow.id);
+    if (error) return clAlert(root, 'error', authMessage(error));
+    $('dlg-prop').close(); toast('Обектът е изтрит.'); refreshClient(c.id, 'props');
+  });
+  $('dlg-prop').showModal();
+}
+
 /* ---------- Staff section ---------- */
 const STAFF_ROLES = ['owner', 'manager', 'cleaner', 'accountant'];
 const ROLE_ORDER = { owner: 0, manager: 1, cleaner: 2, accountant: 3 };
@@ -2645,7 +3033,7 @@ function staffFileHTML(p, perms) {
       <div class="sf-group">${p.role === 'manager' || p.role === 'owner' ? 'Екип' : 'Мениджър'}</div>
       <div data-k="team"><div class="empty">—</div></div>
       <div class="sf-group">Обекти</div>
-      <div class="empty sm">Обектите ще се показват тук, когато добавим раздел „Клиенти и обекти“.</div>
+      <div data-k="props"><div class="empty sm">Зареждане…</div></div>
     </div>
 
     <!-- Availability -->
@@ -2759,6 +3147,25 @@ function mountStaffFile(root, p, perms) {
       });
       sel.value = p.d?.manager_id || '';
     }
+  })();
+
+  // ---- assigned properties (no prices)
+  (async () => {
+    const box = q('[data-k="props"]'); if (!box) return;
+    const { data, error } = await supabase.rpc('get_staff_properties', { target: p.id });
+    if (error) { box.innerHTML = `<div class="empty sm">${esc(authMessage(error))}</div>`; return; }
+    const rows = data || [];
+    box.innerHTML = rows.length ? `<div class="mini-list">${rows.map((r) => `
+      <details class="prop-mini">
+        <summary><span class="avatar emo-av">${(PR_KIND[r.kind] || PR_KIND.other)[0]}</span><span style="min-width:0">${esc(r.name)}<small>${esc(r.client_name)}${r.address ? ' · ' + esc(r.address) : ''}</small></span></summary>
+        <dl class="pf-dl">
+          ${r.address ? `<dt>Адрес</dt><dd><a href="${mapsHref(r.address)}" target="_blank" rel="noopener">${esc(r.address)} ↗</a></dd>` : ''}
+          ${r.schedule_note ? `<dt>График</dt><dd>${esc(r.schedule_note)}</dd>` : ''}
+          ${r.contact_name || r.contact_phone ? `<dt>Контакт</dt><dd>${esc(r.contact_name || '')} ${r.contact_phone ? `<a href="${telHref(r.contact_phone)}">${esc(r.contact_phone)}</a>` : ''}</dd>` : ''}
+          ${r.access_info ? `<dt>Достъп</dt><dd>${esc(r.access_info)}</dd>` : ''}
+          ${r.protocol ? `<dt>Протокол</dt><dd>${esc(r.protocol)}</dd>` : ''}
+        </dl>
+      </details>`).join('')}</div>` : `<div class="empty sm">${p.role === 'cleaner' ? 'Няма назначени обекти.' : 'Няма обекти, на които е назначен.'}</div>`;
   })();
 
   // ---- settings (rating / rate / manager)
