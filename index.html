@@ -1114,7 +1114,9 @@
   .drow.neg .dv { color: var(--accent); } .drow.neg .db i { background: var(--accent); }
   .f-kind { align-self: center; }
   .mchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-  .mchip { border: 1px solid var(--rule); border-left: 4px solid var(--rule); padding: 6px 10px; background: var(--paper); min-width: 150px; flex: 1; }
+  .mchip { border: 1px solid var(--rule); border-left: 4px solid var(--rule); padding: 6px 10px; background: var(--paper); flex: 1 1 140px; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+  .mchip * { white-space: normal; }
+  .mchip span { display: block; line-height: 1.35; }
   .mchip small { display: block; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
   .mchip b { font-family: var(--font-mono); font-size: 20px; display: block; margin: 2px 0; }
   .mchip span { font-size: 11.5px; color: var(--muted); }
@@ -1412,7 +1414,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.39 — марж в графиката</div>
+      <div class="version">v0.40 — марж в графиката</div>
     </div>
   </aside>
 
