@@ -639,7 +639,8 @@
   .stat.warn .val { color: var(--warn); }
   .stat.ok { border-color: var(--ok); background: var(--ok-bg); }
   .stat.ok .val { color: var(--ok); }
-  .stat.gain .val { color: var(--ok); }
+  .stat.gain .val, .stat.proj .val { color: var(--ok); }
+  .stat.total { border: 2px solid var(--ok); background: var(--ok-bg); }
   .sf-subgroup { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-top: 6px; }
   .sf-span { grid-column: 1 / -1; }
   .f-tabs { margin: 4px 0 12px; }
@@ -1390,7 +1391,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.36 — печалба в Пари</div>
+      <div class="version">v0.37 — общо прогноза</div>
     </div>
   </aside>
 
@@ -4792,7 +4793,7 @@ function mountStaffFile(root, p, perms) {
       q('[data-k="money"]').innerHTML =
         tile('Изплатено — общо', eur(n.paidAll)) + tile(`Изплатено — ${m}`, eur(n.paidMonth)) +
         tile('За изплащане сега', eur(Math.max(0, n.owed)), n.owed > 0.004 ? 'warn' : '') +
-        tile(`Прогноза заплата — ${m}`, eur(n.payMonth)) + tile(`Прогноза заплата — ${nx}`, eur(n.payNext)) +
+        tile(`Прогноза заплата — ${m}`, eur(n.payMonth), 'proj') + tile(`Прогноза заплата — ${nx}`, eur(n.payNext), 'proj') +
         (n.owed < -0.004 ? tile('Аванс (надплатено)', eur(-n.owed), 'ok') : '');
       // owners: their share of the company profit (after corporate and dividend tax)
       const oi = canFinance() ? (FIN.owners || []).findIndex((o) => o.user_id === p.id) : -1;
@@ -4803,12 +4804,16 @@ function mountStaffFile(root, p, perms) {
           await fetchFinData();
           const cur = ymOf(FD.now), nx = ymAdd(cur, 1), own = (ym, src) => finCalc(ym, src).owners[oi] || { net: 0 };
           let all = 0; for (let ym = FD.first; ym <= cur; ym = ymAdd(ym, 1)) all += own(ym, 'done').net;
-          const o = FIN.owners[oi], st = (l, v, sub) => tile(l, `${eur(v)}${sub ? `<small class="psub">${sub}</small>` : ''}`, v > 0.004 ? 'gain' : '');
+          const o = FIN.owners[oi], st = (l, v, sub, cls) => tile(l, `${eur(v)}${sub ? `<small class="psub">${sub}</small>` : ''}`, cls ?? (v > 0.004 ? 'gain' : ''));
+          const pM = own(cur, 'plan').net, pN = own(nx, 'plan').net, nxL = nx === ymOf(n.nStart) ? monthName(n.nStart) : ymLabel(nx);
           box.lastElementChild.remove();
           box.insertAdjacentHTML('beforeend',
             st('Печалба — общо досега', all, `${o.pct}% дял, след данъците`) +
-            st(`Печалба — ${m}`, own(cur, 'plan').net, 'целият месец, с планираните') +
-            st(`Прогноза печалба — ${nx === ymOf(n.nStart) ? monthName(n.nStart) : ymLabel(nx)}`, own(nx, 'plan').net));
+            st(`Прогноза печалба — ${m}`, pM, 'целият месец, с планираните', 'proj') +
+            st(`Прогноза печалба — ${nxL}`, pN, '', 'proj') +
+            // more than one kind of income → a combined total
+            st(`Общо прогноза — ${m}`, n.payMonth + pM, `заплата ${eur(n.payMonth)} + печалба ${eur(pM)}`, 'proj total') +
+            st(`Общо прогноза — ${nxL}`, n.payNext + pN, `заплата ${eur(n.payNext)} + печалба ${eur(pN)}`, 'proj total'));
         } catch { box.lastElementChild?.remove(); }
       }
       if (perms.profit && n.profit) {
