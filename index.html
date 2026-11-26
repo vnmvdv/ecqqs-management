@@ -4190,7 +4190,8 @@ const ymOf = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`;
 const ymAdd = (ym, n) => { const [y, m] = ym.split('-').map(Number); return ymOf(new Date(y, m - 1 + n, 1)); };
 const ymStart = (ym) => { const [y, m] = ym.split('-').map(Number); return new Date(y, m - 1, 1); };
 const ymLabel = (ym) => ymStart(ym).toLocaleDateString('bg-BG', { month: 'long', year: 'numeric' }).replace(' г.', '');
-const ymShort = (ym) => ymStart(ym).toLocaleDateString('bg-BG', { month: 'short' }).replace('.', '');
+const MSHORT = ['яну', 'фев', 'мар', 'апр', 'май', 'юни', 'юли', 'авг', 'сеп', 'окт', 'ное', 'дек'];
+const ymShort = (ym) => MSHORT[Number(ym.slice(5, 7)) - 1];
 const eur0 = (n) => (n < 0 ? '−' : '') + Math.round(Math.abs(n || 0)).toLocaleString('bg-BG') + ' €';
 
 let FD = null;                       // loaded finance data
