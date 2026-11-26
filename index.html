@@ -1113,6 +1113,15 @@
   .drow.tot { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; font-size: 14.5px; } .drow.tot .dv { color: var(--ok); }
   .drow.neg .dv { color: var(--accent); } .drow.neg .db i { background: var(--accent); }
   .f-kind { align-self: center; }
+  .mchips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  .mchip { border: 1px solid var(--rule); border-left: 4px solid var(--rule); padding: 6px 10px; background: var(--paper); min-width: 150px; flex: 1; }
+  .mchip small { display: block; font-size: 10px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .mchip b { font-family: var(--font-mono); font-size: 20px; display: block; margin: 2px 0; }
+  .mchip span { font-size: 11.5px; color: var(--muted); }
+  .mchip.mk-high, .mchip.mk-ok { border-left-color: #16A34A; } .mchip.mk-high b, .mchip.mk-ok b { color: #16A34A; }
+  .mchip.mk-weak { border-left-color: #F59E0B; } .mchip.mk-weak b { color: #B45309; }
+  .mchip.mk-bad, .mchip.mk-loss { border-left-color: #DC2626; } .mchip.mk-bad b, .mchip.mk-loss b { color: #DC2626; }
+
   .goal-mode { margin-bottom: 12px; }
   .goal-adv { margin: 4px 0 10px; } .goal-adv summary { cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
   .gprog { margin: 12px 0 4px; } .gp-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
@@ -1403,7 +1412,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.38 — цели + цветна графика</div>
+      <div class="version">v0.39 — марж в графиката</div>
     </div>
   </aside>
 
@@ -4663,6 +4672,22 @@ function renderFinances() {
     ? `<div class="stat two ${cls}"><div class="lbl">${l}</div><div class="vv"><div><small>Изпълнено</small><b>${eur0(c[k])}</b></div><div><small>Целият месец</small><b>${eur0(P[k])}</b></div></div>${sub || delta(P[k], pm[k])}</div>`
     : `<div class="stat ${cls}"><div class="lbl">${l}</div><div class="val">${eur0(c[k])}${sub || delta(c[k], pm[k])}</div></div>`;
   const dr = (l, rule, v, cls = '') => `<div class="pb-row ${cls}"><span>${esc(l)}${rule ? ` <em>${esc(rule)}</em>` : ''}</span><b>${v}</b></div>`;
+  // net margin = profit after taxes ÷ revenue — selected month and its calendar year (rest of the year from the schedules)
+  const yr = finYM.slice(0, 4); let yRev = 0, yNet = 0, yDoneRev = 0, yDoneNet = 0;
+  for (let mo = 1; mo <= 12; mo++) {
+    const ym = `${yr}-${pad2(mo)}`; if (ym < FD.first) continue;
+    const x = finCalc(ym, ym === cur ? 'plan' : 'done'); yRev += x.rev; yNet += x.dist;
+    if (ym <= cur) { const d = finCalc(ym, 'done'); yDoneRev += d.rev; yDoneNet += d.dist; }
+  }
+  const mPct = (net, rev) => (rev > 0 ? net / rev * 100 : null);
+  const mChip = (label, net, rev, sub) => { const v = mPct(net, rev); const k = v === null ? '' : health(v).k;
+    return `<div class="mchip mk-${k}"><small>${label}</small><b>${v === null ? '—' : Math.round(v * 10) / 10 + '%'}</b><span>${v === null ? 'няма приход' : `${eur0(net)} от ${eur0(rev)}`}${sub ? ' · ' + sub : ''}</span></div>`; };
+  const marginStrip = `<div class="mchips">
+    ${cmp ? mChip(`Марж ${ymShort(finYM)} · изпълнено`, c.dist, c.rev) + mChip(`Марж ${ymShort(finYM)} · целият месец`, P.dist, P.rev)
+          : mChip(`Марж ${esc(ymLabel(finYM))}`, c.dist, c.rev, c.future ? 'прогноза' : '')}
+    ${yr <= cur.slice(0, 4) && yDoneRev ? mChip(`Марж ${yr} · досега`, yDoneNet, yDoneRev) : ''}
+    ${mChip(`Марж ${yr} · цялата година`, yNet, yRev, 'с прогнозата')}
+  </div>`;
   const series = []; for (let i = -8; i <= 3; i++) { const ym = ymAdd(cur, i); const x = finCalc(ym, ym === cur ? 'plan' : 'done'); const d = finCalc(ym, 'done');
     series.push({ ym, rev: x.rev, costs: x.costs, net: x.dist, future: x.future, part: ym === cur ? { rev: d.rev, costs: d.costs, net: d.dist } : null }); }
 
@@ -4720,6 +4745,7 @@ function renderFinances() {
     <div class="fgrid">
       <div class="card fcard">
         <h2>Приход и разходи</h2>
+        ${marginStrip}
         <div class="flegend"><span><i class="rv"></i>Приход</span><span><i class="cs"></i>Разходи</span><span><i class="pf"></i>Печалба след данъци</span><span class="muted">бледите = прогноза / още планирано · натиснете месец</span></div>
         ${finChart(series)}
       </div>
