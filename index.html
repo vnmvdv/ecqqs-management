@@ -685,6 +685,7 @@
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .seg label { margin: 0; cursor: pointer; }
   .seg input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .nc-mode { margin-bottom: 14px; }
   .seg span { display: grid; place-items: center; min-height: 44px; border: 1.5px solid var(--rule); border-radius: var(--radius); font-weight: 600; font-size: 14px; }
   .seg input:checked + span { border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 14%, var(--card)); }
   .seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -1306,7 +1307,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.28 — печалба от хигиенист</div>
+      <div class="version">v0.29 — обект към съществуващ клиент</div>
     </div>
   </aside>
 
@@ -3319,8 +3320,47 @@ function openClient(id) {
   clCurrent = id ? clients.find((c) => c.id === id) : null;
   const root = $('cl-root');
   if (!clCurrent) {
-    root.innerHTML = `<h2>Нов клиент</h2><div class="sf-alert" role="alert"></div>${clientDataForm(null, true)}`;
+    const hasClients = clients.length > 0;
+    root.innerHTML = `<h2>Нов запис</h2>
+      ${hasClients ? `<div class="seg nc-mode" role="radiogroup" aria-label="За кого е обектът">
+        <label><input type="radio" name="ncmode" value="new" checked><span>${ic('plus')} Нов клиент</span></label>
+        <label><input type="radio" name="ncmode" value="existing"><span>${ic('users')} Съществуващ клиент</span></label></div>` : ''}
+      <div class="sf-alert" role="alert"></div>
+      <div data-k="nc-new">${clientDataForm(null, true)}</div>
+      <div data-k="nc-old" hidden>
+        <p class="lead">Изберете клиента — ще се отвори нов обект към него, без да въвеждате данните му отново.</p>
+        <div class="field"><input class="input" type="search" data-k="nc-q" placeholder="Търсене по име, телефон, имейл, ЕИК, адрес…" autocomplete="off"></div>
+        <div class="ulist" data-k="nc-list"></div>
+      </div>`;
     bindClientForm(root, null);
+    const listEl = root.querySelector('[data-k="nc-list"]'), qEl = root.querySelector('[data-k="nc-q"]');
+    const drawPick = () => {
+      const q = (qEl?.value || '').trim().toLowerCase();
+      const hay = (c) => [c.name, c.legal_name, c.contact_name, c.contact_phone, c.contact_email, c.eik,
+        ...(c.properties || []).flatMap((p) => [p.name, p.address, p.neighbourhood])].filter(Boolean).join(' ').toLowerCase();
+      const list = clients.filter((c) => !q || hay(c).includes(q)).sort((a, b) => a.name.localeCompare(b.name, 'bg'));
+      listEl.innerHTML = list.length ? list.map((c) => {
+        const n = (c.properties || []).length;
+        return `<button class="urow" type="button" data-pick="${c.id}">
+          <div class="avatar emo-av">${ic(c.kind === 'person' ? 'user' : 'office')}</div>
+          <div style="min-width:0"><div class="nm">${esc(c.name)}${c.vip ? ' <span class="vip">VIP</span>' : ''}</div>
+            <div class="sub">${esc([c.contact_phone, c.contact_email].filter(Boolean).join(' · ') || CL_STATUS[c.status])}</div></div>
+          <div class="tags"><span class="badge">${n} ${n === 1 ? 'обект' : 'обекта'}</span>${c.status !== 'active' ? `<span class="badge pending">${esc(CL_STATUS[c.status])}</span>` : ''}</div>
+        </button>`; }).join('') : '<div class="empty">Няма съвпадения.</div>';
+    };
+    root.querySelectorAll('input[name="ncmode"]').forEach((r) => r.addEventListener('change', () => {
+      const old = r.value === 'existing' && r.checked;
+      root.querySelector('[data-k="nc-new"]').hidden = old; root.querySelector('[data-k="nc-old"]').hidden = !old;
+      clAlert(root); if (old) { drawPick(); qEl.focus(); }
+    }));
+    qEl?.addEventListener('input', drawPick);
+    listEl?.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-pick]'); if (!b) return;
+      const c = clients.find((x) => x.id === b.dataset.pick); if (!c) return;
+      clCurrent = c;
+      renderClientFile(root, c, manage, 'props');     // behind it: the client's file, so the new property shows up there after saving
+      openProperty(c, null);
+    });
     $('dlg-client').showModal();
     return;
   }
