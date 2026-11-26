@@ -1390,7 +1390,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.35 — разходи + дял на собствениците</div>
+      <div class="version">v0.36 — печалба в Пари</div>
     </div>
   </aside>
 
@@ -4798,17 +4798,16 @@ function mountStaffFile(root, p, perms) {
       const oi = canFinance() ? (FIN.owners || []).findIndex((o) => o.user_id === p.id) : -1;
       if (oi >= 0) {
         const box = q('[data-k="money"]');
-        box.insertAdjacentHTML('beforeend', '<div class="stat sf-span"><div class="lbl">Дял от печалбата</div><div class="val"><small class="psub">Изчисляване…</small></div></div>');
+        box.insertAdjacentHTML('beforeend', '<div class="stat"><div class="lbl">Печалба</div><div class="val"><small class="psub">Изчисляване…</small></div></div>');
         try {
           await fetchFinData();
           const cur = ymOf(FD.now), nx = ymAdd(cur, 1), own = (ym, src) => finCalc(ym, src).owners[oi] || { net: 0 };
           let all = 0; for (let ym = FD.first; ym <= cur; ym = ymAdd(ym, 1)) all += own(ym, 'done').net;
           const o = FIN.owners[oi], st = (l, v, sub) => tile(l, `${eur(v)}${sub ? `<small class="psub">${sub}</small>` : ''}`, v > 0.004 ? 'gain' : '');
           box.lastElementChild.remove();
-          box.insertAdjacentHTML('beforeend', `<div class="sf-subgroup">Дял от печалбата (${o.pct}%, след данъците)</div>` +
-            st('Печалба — общо досега', all, 'от изпълнените почиствания') +
-            st(`Печалба — ${m} (изпълнено)`, own(cur, 'done').net) +
-            st(`Печалба — ${m} (целият месец)`, own(cur, 'plan').net, 'с планираните') +
+          box.insertAdjacentHTML('beforeend',
+            st('Печалба — общо досега', all, `${o.pct}% дял, след данъците`) +
+            st(`Печалба — ${m}`, own(cur, 'plan').net, 'целият месец, с планираните') +
             st(`Прогноза печалба — ${nx === ymOf(n.nStart) ? monthName(n.nStart) : ymLabel(nx)}`, own(nx, 'plan').net));
         } catch { box.lastElementChild?.remove(); }
       }
