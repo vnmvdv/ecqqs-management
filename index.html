@@ -1077,6 +1077,43 @@
     .ptbl .mg { width: auto; max-width: 320px; }
     .ptbl .lnk { padding: 2px 0; }
   }
+
+  /* ---------- Clients v3 ---------- */
+  .bal { font-family: var(--font-mono); font-size: 15px !important; }
+  .bal.due { color: var(--accent); } .bal.pre { color: var(--ok); } .bal.ok0 { color: var(--ink-2); }
+  .stat.due .val { color: var(--accent); }
+  .rbar { width: 190px; }
+  .rmeter { position: relative; height: 9px; border: 1px solid var(--ink); background: #fff; overflow: hidden; }
+  .rmeter .rfill { position: absolute; left: 0; top: 0; bottom: 0; }
+  .rmeter .rkeep { position: absolute; left: 0; top: 0; bottom: 0; background: #DAD9D2; border-right: 1px solid var(--ink); }
+  .rmeter .rlost { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(-45deg, var(--lc) 0 2px, #fff 2px 5px); }
+  .mg-sub { font-family: var(--font-ui); font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-weight: 600; }
+  .vip-tg { width: 26px; height: 26px; display: inline-grid; place-items: center; background: transparent; border: 1px solid var(--rule); color: var(--muted); cursor: pointer; margin-right: 6px; flex-shrink: 0; }
+  .vip-tg .ic { width: 15px; height: 15px; }
+  .vip-tg:hover { border-color: var(--ink); color: var(--ink); }
+  .vip-tg.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .vip-tg.on .ic { fill: #fff; }
+  .ctr-no { display: inline-flex; align-items: center; gap: 5px; background: none; border: 1px solid var(--ink); padding: 3px 8px; font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; color: var(--ink); }
+  .ctr-no:hover { background: var(--ink); color: var(--paper); }
+  .ctr-no .ic { width: 13px; height: 13px; }
+  .ctr-no.plain { border: none; padding: 0; cursor: default; }
+  .ctr-file { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .ctr-up { cursor: pointer; min-height: 40px; }
+  .ctr-box { border-left: 3px solid var(--ink); padding-left: 12px; margin: 8px 0 14px; }
+  .mflag { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-ui); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 7px; margin-bottom: 8px; border: 1.5px solid; }
+  .mflag .ic { width: 13px; height: 13px; stroke-width: 2.2; }
+  .mflag.m-bad { color: #fff; background: var(--accent); border-color: var(--accent); }
+  .mflag.m-weak { color: var(--warn); background: var(--warn-bg); border-color: var(--warn); }
+  .ptbl tr.m-bad td.c-main { box-shadow: inset 5px 0 0 var(--accent), 1px 0 0 var(--rule) !important; }
+  .ptbl tr.m-weak td.c-main { box-shadow: inset 5px 0 0 #C08A1E, 1px 0 0 var(--rule) !important; }
+  .svc { font-weight: 600; }
+  @media (max-width: 860px) {
+    .ptbl tbody tr.m-bad { border-left: 6px solid var(--accent); }
+    .ptbl tbody tr.m-weak { border-left: 6px solid #C08A1E; }
+    .ptbl td.c-bar { grid-column: 1 / -1; }
+    .rbar { width: auto; max-width: 340px; }
+    .ptbl td.c-acc { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>
@@ -1231,7 +1268,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.24 — клиенти по обекти</div>
+      <div class="version">v0.25 — баланси, договори, достъп</div>
     </div>
   </aside>
 
@@ -2918,6 +2955,81 @@ function confirmDialog({ title = 'Сигурни ли сте?', text = '', ok = 
 }
 
 
+/* ---------- Contracts (private PDFs) ---------- */
+async function openContract(path) {
+  if (!path) return toast('Няма качен PDF.');
+  const w = window.open('', '_blank');                 // open first so phones don't block the popup
+  const { data, error } = await supabase.storage.from('contracts').createSignedUrl(path, 600);
+  if (error || !data?.signedUrl) { w?.close(); return toast('PDF файлът не може да се отвори: ' + authMessage(error)); }
+  if (w) w.location.href = data.signedUrl; else location.href = data.signedUrl;
+}
+
+/* ---------- Client balances: cleanings done so far vs money received ---------- */
+let clientBal = {};   // client_id -> { billed, paid, balance, unpaidVisits, perVisit }
+function perVisitOf(p) {
+  const price = Number(p.price); if (!(price > 0)) return null;
+  const s = p.schedule, h = s ? schDurH(s) : null;
+  if (p.price_model === 'visit') return price;
+  if (p.price_model === 'hour') return h ? price * h : null;
+  const per = s ? schPerMonth(s) : 0;                 // monthly fee spread over the month's cleanings
+  return per > 0 ? price / per : null;
+}
+async function loadBalances() {
+  if (!['owner', 'manager', 'accountant'].includes(me?.role)) { clientBal = {}; return; }
+  try { await waitFor(() => window.rrule); } catch { return; }
+  const [{ data: evs }, { data: pays }] = await Promise.all([
+    supabase.from('events').select('id,property_id,start_at,end_at,all_day,recurrence,exdates').not('property_id', 'is', null),
+    supabase.from('client_payments').select('client_id,amount'),
+  ]);
+  const propById = {};
+  clients.forEach((c) => (c.properties || []).forEach((p) => { propById[p.id] = { p, c }; }));
+  const now = new Date(); const bal = {};
+  const B = (cid) => (bal[cid] ||= { billed: 0, paid: 0, visits: 0, perVisit: null });
+  for (const ev of evs || []) {
+    const ref = propById[ev.property_id]; if (!ref) continue;
+    const pv = perVisitOf(ref.p); if (!pv) continue;
+    const done = expandEvents([ev], now).filter((b) => b.e <= now).length;
+    const b = B(ref.c.id); b.billed += done * pv; b.visits += done; b.perVisit = pv;
+  }
+  for (const x of pays || []) B(x.client_id).paid += Number(x.amount) || 0;
+  for (const [cid, b] of Object.entries(bal)) b.balance = b.billed - b.paid;
+  clientBal = bal;
+}
+function balanceHTML(cid) {
+  const b = clientBal[cid];
+  if (!b || (!b.billed && !b.paid)) return '<span class="dim">—</span>';
+  if (Math.abs(b.balance) < 0.5) return '<b class="bal ok0">0 €</b><small>всичко платено</small>';
+  const visits = b.perVisit ? Math.round(Math.abs(b.balance) / b.perVisit * 10) / 10 : null;
+  return b.balance > 0
+    ? `<b class="bal due">${eur(b.balance)}</b><small>неплатени${visits ? ` · ≈ ${visits} почиств.` : ''}</small>`
+    : `<b class="bal pre">+${eur(-b.balance)}</b><small>предплатени${visits ? ` · ≈ ${visits} почиств.` : ''}</small>`;
+}
+
+/* ---------- Revenue share bars ---------- */
+function shareColor(pct) {               // grey → amber → red as the client's share of revenue grows
+  const t = Math.max(0, Math.min(1, pct / 50));
+  const mix = (a, b, k) => Math.round(a + (b - a) * k);
+  const [r1, g1, b1] = t < .5 ? [140, 140, 134] : [192, 138, 30];
+  const [r2, g2, b2] = t < .5 ? [192, 138, 30] : [204, 0, 0];
+  const k = t < .5 ? t * 2 : (t - .5) * 2;
+  return `rgb(${mix(r1, r2, k)},${mix(g1, g2, k)},${mix(b1, b2, k)})`;
+}
+function shareBarHTML(rev, total) {
+  if (!(rev > 0) || !(total > 0)) return '<span class="dim">—</span>';
+  const pct = rev / total * 100, col = shareColor(pct);
+  const risk = pct >= 40 ? 'Голяма зависимост' : pct >= 20 ? 'Значим дял' : pct >= 10 ? 'Умерен дял' : 'Малък дял';
+  return `<div class="rbar"><div class="mg-top"><b class="mg-v" style="color:${col}">${pct.toLocaleString('bg-BG', { maximumFractionDigits: 1 })}%</b><span class="hbadge" style="border-color:${col};color:${col}">${risk}</span></div>
+    <div class="rmeter" role="img" aria-label="Дял от приходите ${Math.round(pct)}%"><i class="rfill" style="width:${pct}%;background:${col}"></i></div>
+    <div class="mg-cap">${eur(rev)} от ${eur(total)} / мес</div></div>`;
+}
+function leaveBarHTML(rev, total) {
+  if (!(rev > 0) || !(total > 0)) return '<span class="dim">—</span>';
+  const keep = Math.max(0, 100 - rev / total * 100), col = shareColor(100 - keep);
+  return `<div class="rbar"><div class="mg-top"><b class="mg-v">${keep.toLocaleString('bg-BG', { maximumFractionDigits: 1 })}%</b><span class="mg-sub">остава</span></div>
+    <div class="rmeter" role="img" aria-label="Остават ${Math.round(keep)}% от приходите"><i class="rkeep" style="width:${keep}%"></i><i class="rlost" style="left:${keep}%;width:${100 - keep}%;--lc:${col}"></i></div>
+    <div class="mg-cap">${eur(total - rev)} / мес · <span style="color:${col}">−${eur(rev)}</span></div></div>`;
+}
+
 /* ---------- Client economics (same model as the live CRM) ---------- */
 const BIZ = { wage: 13, overheadPerHour: 270 / 60, matPerHour: 1 };      // € per working hour
 const COST_PER_HOUR = BIZ.wage + BIZ.overheadPerHour + BIZ.matPerHour;   // 18.50 €
@@ -3003,6 +3115,8 @@ async function loadClients() {
   clients = data || [];
   if (!Object.keys(staffNames).length) await loadStaffNames();
   renderClients();
+  await loadBalances();
+  renderClients();
 }
 let staffNames = {};
 async function loadStaffNames() {
@@ -3045,6 +3159,7 @@ function renderClients() {
   };
   const td = (label, html, cls = '') => `<td class="${cls}" data-l="${label}">${html}</td>`;
   const dash = '<span class="dim">—</span>';
+  const manageC = canManageClients();
   const body = rows.map(({ c, p, n, cEcon }) => {
     const e = p ? propEcon(p) : null;
     const share = total > 0 && e?.revenue ? e.revenue / total * 100 : 0;
@@ -3057,30 +3172,47 @@ function renderClients() {
     const cs = p ? contractState(p) : null;
     const next = p?.schedule ? schNextDates(p.schedule, 1)[0] : null;
     const ppl = (p?.property_staff || []).map((x) => staffNames[x.user_id]).filter(Boolean);
-    return `<tr data-cid="${c.id}" ${p ? `data-pid="${p.id}"` : ''} class="${c.status !== 'active' ? 'dimrow' : ''}">
-      ${td('Клиент', `<div class="pc-client"><button type="button" class="pc-cname" data-open-client="${c.id}">${esc(c.name)}</button>${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
+    const H = margin !== null && isFinite(margin) ? health(margin) : null;
+    const mcls = H && ['loss', 'bad'].includes(H.k) ? 'm-bad' : H?.k === 'weak' ? 'm-weak' : '';
+    return `<tr data-cid="${c.id}" ${p ? `data-pid="${p.id}"` : ''} class="${c.status !== 'active' ? 'dimrow' : ''} ${mcls}">
+      ${td('Клиент', `<div class="pc-client">${manageC ? `<button type="button" class="vip-tg ${c.vip ? 'on' : ''}" data-vip="${c.id}" title="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-label="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-pressed="${!!c.vip}">${ic('star')}</button>` : ''}<button type="button" class="pc-cname" data-open-client="${c.id}">${esc(c.name)}</button>${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
         <div class="pc-prop">${p ? `${(PR_KIND[p.kind] || PR_KIND.other)[0]} ${esc(p.name)}` : '<span class="dim">без обект</span>'}${n > 1 ? `<span class="pc-n">${n} обекта</span>` : ''}</div>`, 'c-main')}
       ${td('Статус', stBadge(c, p), 'c-st')}
+      ${td('Неплатено / предплатено', balanceHTML(c.id), 'num c-bal')}
       ${td('Цена / почистване', e?.perVisit ? `<b>${eur(e.perVisit)}</b>${p.price_model !== 'visit' ? `<small>${eur(Number(p.price))} ${PRICE_MODEL[p.price_model]}</small>` : ''}` : dash, 'num')}
       ${td('Време (план)', hoursPlan ? `<b>${fmtHM(hoursPlan)}</b>` : dash, 'num')}
       ${td('Време (реално)', hoursPlan ? `<b>${fmtHM(hoursPlan)}</b><small>засега = план</small>` : dash, 'num')}
-      ${td('Дял от приходите', e?.revenue ? `<b>${share.toLocaleString('bg-BG', { maximumFractionDigits: 1 })}%</b><small>${eur(e.revenue)}/мес</small>` : dash, 'num')}
-      ${td('Приход, ако си тръгне', cEcon.revenue ? `<b class="neg">${eur(leave)}</b><small>/мес · −${eur(cEcon.revenue)}</small>` : dash, 'num')}
+      ${td('Дял от приходите', shareBarHTML(cEcon.revenue, total), 'c-bar')}
+      ${td('Приход, ако си тръгне', leaveBarHTML(cEcon.revenue, total), 'c-bar')}
       ${td('Контакт', (cName || cPhone || cMail) ? `${cName ? `<div>${esc(cName)}</div>` : ''}${cPhone ? `<a class="lnk" href="${telHref(cPhone)}">${esc(cPhone)}</a>` : ''}${cMail ? `<a class="lnk sm" href="mailto:${esc(cMail)}">${esc(cMail)}</a>` : ''}` : dash, 'c-contact')}
-      ${td('Договор', cs ? `<span class="ct ct-${cs.k}">${cs.label}</span>${p.contract_start || p.contract_end ? `<small>${fmtD(p.contract_start) || '…'} – ${fmtD(p.contract_end) || 'безсрочен'}</small>` : ''}` : dash)}
+      ${td('Договор', p ? (p.contract_signed
+        ? `${p.contract_file ? `<button type="button" class="ctr-no" data-ctr="${esc(p.contract_file)}" title="Отвори подписания договор (PDF)">${ic('ext')} ${esc(p.contract_number || 'Договор')}</button>` : `<b class="ctr-no plain">${esc(p.contract_number || 'Подписан')}</b><small>няма качен PDF</small>`}
+           <small class="ct ct-${cs.k}">${p.contract_end ? 'до ' + fmtD(p.contract_end) : 'безсрочен'}${cs.k === 'soon' ? ' · изтича скоро' : cs.k === 'over' ? ' · изтекъл' : ''}</small>`
+        : `<span class="ct ct-none">Няма подписан</span>${p.contract_end ? `<small>до ${fmtD(p.contract_end)}</small>` : ''}`) : dash)}
       ${td('Адрес', addr.length ? `<a class="lnk addr" href="${mapsHref(addr.join(', '))}" target="_blank" rel="noopener">${esc(addr[0])}</a>${addr.length > 1 ? `<small>${esc(addr.slice(1).join(', '))}</small>` : ''}` : dash, 'c-addr')}
+      ${td('Достъп', p && (p.access_method || p.access_info) ? `${p.access_method ? `<div>${esc(ACCESS[p.access_method])}</div>` : ''}${p.access_info ? `<small>${esc(p.access_info)}</small>` : ''}` : dash, 'c-acc')}
+      ${td('Услуга и честота', p ? `<div class="svc">${esc(SERVICE[p.service_type || 'regular'])}</div>` : '', 'c-sch')}
       ${td('График', p?.schedule ? `<div>${esc(everyText(p.schedule.freq, p.schedule.interval))}${p.schedule.freq === 'weekly' && p.schedule.byweekday?.length ? ' — ' + p.schedule.byweekday.map((d) => WD_SHORT[d]).join(', ') : ''}</div><small>${esc(p.schedule.start_time)}–${esc(p.schedule.end_time)}${next ? ' · следващо ' + next.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' }) : ''}${p.schedule_event_id ? ' · в календара' : ''}</small>` : (p?.schedule_note ? `<small>${esc(p.schedule_note)}</small>` : dash))}
-      ${td('Хора', ppl.length ? `<div class="pc-ppl">${ppl.map((u) => `<span class="avatar xs" title="${esc(fullName(u) || u.email)}">${esc(initials(u))}</span>`).join('')}</div><small>${esc(ppl.map((u) => u.fname || u.email).join(', '))}</small>` : ((p?.property_staff || []).length ? `<small>${p.property_staff.length} души</small>` : dash))}
-      ${td('Марж', p ? marginMeterHTML(margin, `по план · ${fmtHM(hoursPlan)}`) : dash, 'c-margin')}
-      ${td('Плащане', p ? `<span class="mchip ${p.invoice ? 'm-invoice' : ''}">${esc(PAY_METHOD[p.payment_method] || '')}</span>${p.invoice ? '<small>с фактура</small>' : '<small>без фактура</small>'}` : dash)}
+      ${td('Хигиенисти', ppl.length ? `<div class="pc-ppl">${ppl.map((u) => `<span class="avatar xs" title="${esc(fullName(u) || u.email)}">${esc(initials(u))}</span>`).join('')}</div><small>${esc(ppl.map((u) => u.fname || u.email).join(', '))}</small>` : ((p?.property_staff || []).length ? `<small>${p.property_staff.length} души</small>` : dash))}
+      ${td('Марж', p ? `${mcls ? `<span class="mflag ${mcls}" title="${H.label}">${ic('alert')} ${mcls === 'm-bad' ? 'Лош клиент' : 'Слаб марж'}</span>` : ''}${marginMeterHTML(margin, `по план · ${fmtHM(hoursPlan)}`)}` : dash, 'c-margin')}
+      ${td('Предпочита да плаща', p ? `<span class="mchip ${p.invoice ? 'm-invoice' : ''}">${esc(PAY_METHOD[p.payment_method] || '')}</span><small>${p.invoice ? 'иска фактура' : 'без фактура'}</small>` : dash)}
     </tr>`;
   }).join('');
   $('c-list').innerHTML = `<div class="ptbl-wrap"><table class="ptbl">
-    <thead><tr><th>Клиент</th><th>Статус</th><th>Цена / почистване</th><th>Време (план)</th><th>Време (реално)</th><th>Дял от приходите</th><th>Приход, ако си тръгне</th><th>Контакт</th><th>Договор</th><th>Адрес</th><th>График</th><th>Хора</th><th>Марж</th><th>Плащане</th></tr></thead>
+    <thead><tr><th>Клиент</th><th>Статус</th><th>Неплатено / предплатено</th><th>Цена / почистване</th><th>Време (план)</th><th>Време (реално)</th><th>Дял от приходите</th><th>Приход, ако си тръгне</th><th>Контакт</th><th>Договор</th><th>Адрес</th><th>Достъп</th><th>Услуга и честота</th><th>График</th><th>Хигиенисти</th><th>Марж</th><th>Предпочита да плаща</th></tr></thead>
     <tbody>${body}</tbody></table></div>`;
 }
-$('c-list').addEventListener('click', (e) => {
+$('c-list').addEventListener('click', async (e) => {
   if (e.target.closest('a')) return;                     // phone, email, map links work as links
+  const ctr = e.target.closest('[data-ctr]');
+  if (ctr) { openContract(ctr.dataset.ctr); return; }
+  const vipBtn = e.target.closest('[data-vip]');
+  if (vipBtn) {
+    const c = clients.find((x) => x.id === vipBtn.dataset.vip); if (!c) return;
+    const { error } = await supabase.from('clients').update({ vip: !c.vip }).eq('id', c.id);
+    if (error) return toast(authMessage(error));
+    c.vip = !c.vip; toast(c.vip ? `${c.name} е VIP.` : `${c.name} вече не е VIP.`); renderClients(); return;
+  }
   const cBtn = e.target.closest('[data-open-client]');
   if (cBtn) { openClient(cBtn.dataset.openClient); return; }
   const tr = e.target.closest('tr[data-cid]'); if (!tr) return;
@@ -3145,7 +3277,8 @@ function openClient(id) {
 }
 
 function renderClientFile(root, c, manage, tab = 'sum') {
-  const tabs = [['sum', 'Обобщение'], ['props', 'Обекти'], ['data', 'Данни']].concat(manage ? [['access', 'Достъп']] : []);
+  const canPay = ['owner', 'manager', 'accountant'].includes(me?.role);
+  const tabs = [['sum', 'Обобщение'], ['props', 'Обекти'], ['pays', 'Плащания'], ['data', 'Данни']].concat(manage ? [['access', 'Достъп']] : []);
   const props = c.properties || [];
   const active = props.filter((p) => p.status === 'active').length;
   root.innerHTML = `
@@ -3187,6 +3320,22 @@ function renderClientFile(root, c, manage, tab = 'sum') {
           <div class="tags">${p.price != null ? `<span class="badge">${eur(p.price)} ${PRICE_MODEL[p.price_model]}</span>` : ''}${p.status !== 'active' ? `<span class="badge pending">${esc(PR_STATUS[p.status])}</span>` : ''}</div>
         </button>`).join('') : '<div class="empty">Няма обекти.</div>'}</div>
     </div>
+    <div class="sf-pane" data-pane="pays" ${tab === 'pays' ? '' : 'hidden'}>
+      <div class="sf-stats" data-k="balstats"></div>
+      ${canPay ? `<form class="pay-form cpay-form" novalidate>
+        <div class="two">
+          <div class="field"><label>Сума (€)</label><input class="input" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label>Дата</label><input class="input" name="paid_on" type="date" value="${ymd(new Date())}"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label>Начин</label><select class="input" name="method">${Object.entries(PAY_METHOD).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
+          <div class="field"><label>Обект</label><select class="input" name="property_id"><option value="">— общо —</option>${props.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join('')}</select></div>
+        </div>
+        <div class="field"><label>Бележка</label><input class="input" name="note" autocomplete="off" placeholder="напр. фактура № 0000123"></div>
+        <div class="actions"><button class="btn" type="submit"><span class="label">${ic('plus')} Добави плащане</span></button></div>
+      </form>` : ''}
+      <div data-k="cpaylist"><div class="empty">Зареждане…</div></div>
+    </div>
     <div class="sf-pane" data-pane="data" ${tab === 'data' ? '' : 'hidden'}>${clientDataForm(c, manage)}</div>
     ${manage ? `<div class="sf-pane" data-pane="access" ${tab === 'access' ? '' : 'hidden'}>
       <p class="lead">Потребители с роля „Клиент“, които виждат този клиент и неговите обекти, когато влязат в системата.</p>
@@ -3197,12 +3346,27 @@ function renderClientFile(root, c, manage, tab = 'sum') {
     root.querySelectorAll('.sf-tab').forEach((x) => x.classList.toggle('active', x === t));
     root.querySelectorAll('.sf-pane').forEach((pn) => { pn.hidden = pn.dataset.pane !== t.dataset.tab; });
     if (t.dataset.tab === 'access') loadClientUsers(root, c);
+    if (t.dataset.tab === 'pays') loadClientPays(root, c);
   }));
   root.querySelector('[data-act="add-prop"]')?.addEventListener('click', () => openProperty(c, null));
   root.querySelectorAll('[data-prop]').forEach((b) => b.addEventListener('click', () => openProperty(c, b.dataset.prop)));
   bindClientForm(root, c);
   root.querySelector('[data-act="del-client"]')?.addEventListener('click', () => deleteClient(root, c));
   if (tab === 'access') loadClientUsers(root, c);
+  if (tab === 'pays') loadClientPays(root, c);
+  root.querySelector('.cpay-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target; const amount = Number(String(f.amount.value).replace(',', '.'));
+    if (!(amount > 0)) return clAlert(root, 'error', 'Въведете сума.');
+    if (!f.paid_on.value) return clAlert(root, 'error', 'Изберете дата.');
+    const btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
+    const { error } = await supabase.from('client_payments').insert({ client_id: c.id, property_id: f.property_id.value || null, amount, paid_on: f.paid_on.value, method: f.method.value, note: f.note.value.trim() || null });
+    busy(btn, false);
+    if (error) return clAlert(root, 'error', authMessage(error));
+    f.amount.value = ''; f.note.value = ''; clAlert(root);
+    toast('Плащането е записано.');
+    await loadBalances(); renderClients(); loadClientPays(root, c);
+  });
 }
 
 function clAlert(root, type, text) {
@@ -3257,6 +3421,29 @@ async function deleteClient(root, c) {
   clients = clients.filter((x) => x.id !== c.id); renderClients();
 }
 
+async function loadClientPays(root, c) {
+  const box = root.querySelector('[data-k="cpaylist"]'), stats = root.querySelector('[data-k="balstats"]'); if (!box) return;
+  const { data, error } = await supabase.from('client_payments').select('id,amount,paid_on,method,note,property_id').eq('client_id', c.id).order('paid_on', { ascending: false }).order('created_at', { ascending: false });
+  if (error) { box.innerHTML = `<div class="empty">${esc(authMessage(error))}</div>`; return; }
+  const b = clientBal[c.id] || { billed: 0, paid: 0, balance: 0 };
+  const tile = (l, v, cls = '') => `<div class="stat ${cls}"><div class="lbl">${l}</div><div class="val">${v}</div></div>`;
+  stats.innerHTML = tile('Изработено до днес', eur(b.billed)) + tile('Платено', eur(b.paid)) +
+    (b.balance > 0.5 ? tile('Неплатено', eur(b.balance), 'warn due') : b.balance < -0.5 ? tile('Предплатено', '+' + eur(-b.balance), 'ok') : tile('Баланс', '0 €'));
+  const propName = Object.fromEntries((c.properties || []).map((x) => [x.id, x.name]));
+  const rows = data || [];
+  box.innerHTML = rows.length ? `<div class="pay-list">${rows.map((r) => `
+    <div class="pay-row"><div><b>${eur(r.amount)}</b><small>${fmtD(r.paid_on)} · ${esc(PAY_METHOD[r.method] || r.method)}${r.property_id && propName[r.property_id] ? ' · ' + esc(propName[r.property_id]) : ''}${r.note ? ' · ' + esc(r.note) : ''}</small></div>
+    ${isOwner() ? `<button type="button" class="sq-btn sm" data-delcpay="${r.id}" title="Изтрий" aria-label="Изтрий плащането">${ic('trash')}</button>` : ''}</div>`).join('')}</div>`
+    : '<div class="empty">Все още няма плащания от този клиент.</div>';
+  box.querySelectorAll('[data-delcpay]').forEach((btn) => btn.addEventListener('click', async () => {
+    const yes = await confirmDialog({ title: 'Изтриване на плащането?', text: 'Плащането ще бъде изтрито и балансът ще се преизчисли.', ok: 'Изтрий' });
+    if (!yes) return;
+    const { error: e2 } = await supabase.from('client_payments').delete().eq('id', btn.dataset.delcpay);
+    if (e2) return clAlert(root, 'error', authMessage(e2));
+    toast('Плащането е изтрито.'); await loadBalances(); renderClients(); loadClientPays(root, c);
+  }));
+}
+
 async function loadClientUsers(root, c) {
   const box = root.querySelector('[data-k="cusers"]'); if (!box) return;
   const [{ data: links }, { data: cu }] = await Promise.all([
@@ -3287,12 +3474,16 @@ async function loadClientUsers(root, c) {
 /* --- property sheet --- */
 let prClient = null, prRow = null;
 const SCH_FREQ = { daily: 'Всеки ден', weekly: 'Всяка седмица', monthly: 'Всеки месец' };
+const SERVICE = { regular: 'Абонаментно поддържане', deep: 'Основно почистване', renovation: 'След ремонт', moveout: 'Нанасяне / напускане',
+  windows: 'Прозорци', furniture: 'Пране на мебели', carpets: 'Пране на килими', car: 'Почистване на автомобил', other: 'Друго' };
+const ACCESS = { client: 'Клиентът ни отваря', key: 'Имаме ключ', code: 'Код / домофон', reception: 'Охрана / рецепция', lockbox: 'Кутия за ключ', other: 'Друго' };
 const WD_KEYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'];
 const WD_SHORT = { mo: 'Пн', tu: 'Вт', we: 'Ср', th: 'Чт', fr: 'Пт', sa: 'Сб', su: 'Нд' };
 const STAFFABLE = ['owner', 'manager', 'cleaner', 'accountant'];
 const toMinT = (t) => { const [h, m] = String(t || '0:0').split(':').map(Number); return h * 60 + (m || 0); };
 function schDurH(s) { let d = toMinT(s.end_time) - toMinT(s.start_time); if (d <= 0) d += 1440; return d / 60; }
 function schPerMonth(s) {
+  if (s.freq === 'once') return 0;                       // one-off jobs are not recurring revenue
   const iv = Math.max(1, Number(s.interval) || 1);
   if (s.freq === 'daily') return 30.44 / iv;
   if (s.freq === 'weekly') return (s.byweekday || []).length * 4.345 / iv;
@@ -3300,12 +3491,14 @@ function schPerMonth(s) {
 }
 const UNIT_WORD = { daily: ['ден', 'дни'], weekly: ['седмица', 'седмици'], monthly: ['месец', 'месеца'] };
 function everyText(freq, n) {
+  if (freq === 'once') return 'Еднократно';
   n = Math.max(1, Number(n) || 1);
   if (n === 1) return { daily: 'Всеки ден', weekly: 'Всяка седмица', monthly: 'Всеки месец' }[freq];
   return `На всеки ${n} ${UNIT_WORD[freq][1]}`;
 }
 function schText(s) {
   if (!s) return '';
+  if (s.freq === 'once') return `Еднократно на ${s.start_date ? fmtD(s.start_date) : '?'}, ${s.start_time}–${s.end_time}`;
   let t = everyText(s.freq, s.interval);
   if (s.freq === 'weekly' && (s.byweekday || []).length) t += ' — ' + s.byweekday.map((d) => WD_SHORT[d]).join(', ');
   if (s.freq === 'monthly' && s.start_date) t += ` на ${fromLocal(s.start_date).getDate()}-о число`;
@@ -3313,6 +3506,7 @@ function schText(s) {
 }
 // Next cleaning dates for the preview (same rule the calendar uses)
 function schNextDates(s, count = 6) {
+  if (s?.freq === 'once') { const d = s.start_date ? fromLocal(s.start_date, s.start_time || '00:00') : null; return d && d > new Date() ? [d] : []; }
   if (!window.rrule || !s?.start_date) return [];
   const R = rrule.RRule;
   const st = fromLocal(s.start_date, s.start_time || '00:00');
@@ -3330,9 +3524,12 @@ function schEventPayload(s, prop, client) {
   const start = fromLocal(s.start_date, s.start_time);
   let end = fromLocal(s.start_date, s.end_time);
   if (end <= start) end = addDays(end, 1);
-  const rec = { freq: s.freq, interval: Math.max(1, Number(s.interval) || 1) };
-  if (s.freq === 'weekly') rec.byweekday = s.byweekday;
-  if (s.until) rec.until = s.until;
+  let rec = null;
+  if (s.freq !== 'once') {
+    rec = { freq: s.freq, interval: Math.max(1, Number(s.interval) || 1) };
+    if (s.freq === 'weekly') rec.byweekday = s.byweekday;
+    if (s.until) rec.until = s.until;
+  }
   const loc = [prop.address, prop.neighbourhood, prop.city].filter(Boolean).join(', ');
   const desc = [prop.access_info ? 'Достъп: ' + prop.access_info : '', prop.protocol ? 'Протокол:\n' + prop.protocol : ''].filter(Boolean).join('\n\n');
   return {
@@ -3354,7 +3551,9 @@ async function syncScheduleEvent(prop, client, s, staffIds, prev) {
   if (eid) { const { data } = await supabase.from('events').select('id,start_at,recurrence').eq('id', eid).maybeSingle(); old = data; if (!old) eid = null; }
   const today = fromLocal(ymd(new Date()));
   const changed = !prev || JSON.stringify(prev.schedule) !== JSON.stringify(s) || prev.staff.join() !== [...staffIds].sort().join();
-  if (old && changed && new Date(old.start_at) < today) {
+  if (old && changed && new Date(old.start_at) < today && !old.recurrence) {
+    eid = null;                                  // a one-off cleaning that already happened stays as history
+  } else if (old && changed && new Date(old.start_at) < today) {
     // end the old series yesterday, keep its history
     const until = ymd(addDays(today, -1));
     const { error } = await supabase.from('events').update({ recurrence: { ...old.recurrence, until } }).eq('id', old.id); if (error) throw error;
@@ -3383,6 +3582,7 @@ async function stopScheduleEvent(prop) {
   if (ev) {
     const today = fromLocal(ymd(new Date()));
     if (new Date(ev.start_at) >= today) { const { error } = await supabase.from('events').delete().eq('id', ev.id); if (error) throw error; }
+    else if (!ev.recurrence) { /* a past one-off cleaning stays */ }
     else { const { error } = await supabase.from('events').update({ recurrence: { ...ev.recurrence, until: ymd(addDays(today, -1)) } }).eq('id', ev.id); if (error) throw error; }
   }
   const { error } = await supabase.from('properties').update({ schedule_event_id: null }).eq('id', prop.id); if (error) throw error;
@@ -3419,6 +3619,7 @@ async function openProperty(c, id) {
         <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
         <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(PR_STATUS).map(([k, l]) => `<option value="${k}" ${(p.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       </div>
+      <div class="field"><label>Вид услуга</label><select class="input" name="service_type">${Object.entries(SERVICE).map(([k, l]) => `<option value="${k}" ${(p.service_type || 'regular') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="sf-group">Местоположение</div>
       <div class="field"><label>Адрес</label><input class="input" name="address" value="${v('address')}" autocomplete="off" placeholder="ул., №, бл., вх., ет., ап."></div>
       <div class="two">
@@ -3429,7 +3630,8 @@ async function openProperty(c, id) {
         <div class="field"><label>Град</label><input class="input" name="city" value="${esc(p.city ?? 'София')}" autocomplete="off" list="bg-cities"></div>
         <div class="field"><label>Площ (м²)</label><input class="input" name="area_m2" type="number" min="0" step="1" inputmode="decimal" value="${v('area_m2')}"></div>
       </div>
-      <div class="field"><label>Достъп</label><textarea class="input" name="access_info" rows="2" placeholder="ключове, кодове, вход, паркинг…">${v('access_info')}</textarea></div>
+      <div class="field"><label>Как влизаме</label><select class="input" name="access_method"><option value="">— не е зададено —</option>${Object.entries(ACCESS).map(([k, l]) => `<option value="${k}" ${p.access_method === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label>Бележки за достъпа</label><textarea class="input" name="access_info" rows="2" placeholder="код, къде е ключът, вход, паркинг…">${v('access_info')}</textarea></div>
       <div class="sf-group">Контакт на място</div>
       <div class="field"><label>Име</label><input class="input" name="contact_name" value="${v('contact_name')}" autocomplete="off"></div>
       <div class="two">
@@ -3437,6 +3639,15 @@ async function openProperty(c, id) {
         <div class="field"><label>Имейл</label><input class="input" name="contact_email" type="email" inputmode="email" value="${v('contact_email')}" autocomplete="off"></div>
       </div>
       <div class="sf-group">Договор и цена</div>
+      <label class="check"><input type="checkbox" name="contract_signed" ${p.contract_signed ? 'checked' : ''}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>Подписан договор</label>
+      <div class="ctr-box" ${p.contract_signed ? '' : 'hidden'}>
+        <div class="field"><label>Номер на договора</label><input class="input" name="contract_number" value="${v('contract_number')}" autocomplete="off" placeholder="напр. ECQQS-2026-014"></div>
+        <div class="field"><label>Подписан договор (PDF)</label>
+          <div class="ctr-file">${p.contract_file ? `<button type="button" class="link" data-act="open-ctr">${ic('ext')} Отвори PDF</button>` : '<span class="muted">Няма качен файл</span>'}
+            ${manage ? `<label class="btn secondary ctr-up"><input type="file" name="contract_pdf" accept="application/pdf" hidden><span class="label">${ic('plus')} ${p.contract_file ? 'Замени' : 'Качи PDF'}</span></label>` : ''}</div>
+          <div class="hint" data-k="ctrname"></div>
+        </div>
+      </div>
       <div class="two">
         <div class="field"><label>Начало</label><input class="input" name="contract_start" type="date" value="${v('contract_start')}"></div>
         <div class="field"><label>Край</label><input class="input" name="contract_end" type="date" value="${v('contract_end')}"></div>
@@ -3459,12 +3670,12 @@ async function openProperty(c, id) {
       <label class="check"><input type="checkbox" name="sch_on" ${s ? 'checked' : ''}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>Редовен график</label>
       <div class="sch" ${s ? '' : 'hidden'}>
         <div class="field"><label>Колко често</label>
-          <div class="sch-quick">${[['daily', 1], ['daily', 3], ['weekly', 1], ['daily', 10], ['weekly', 2], ['weekly', 3], ['monthly', 1]].map(([fq, n]) =>
+          <div class="sch-quick">${[['once', 1], ['daily', 1], ['daily', 3], ['weekly', 1], ['daily', 10], ['weekly', 2], ['weekly', 3], ['monthly', 1]].map(([fq, n]) =>
             `<button type="button" class="opt" data-fq="${fq}" data-n="${n}">${everyText(fq, n)}</button>`).join('')}</div>
-          <div class="sch-every">
+          <div class="sch-every" ${sd.freq === 'once' ? 'hidden' : ''}>
             <span>На всеки</span>
             <input class="input" name="sch_interval" type="number" min="1" max="365" step="1" inputmode="numeric" value="${Number(sd.interval || 1)}" aria-label="Брой">
-            <select class="input" name="sch_freq" aria-label="Единица">${Object.keys(UNIT_WORD).map((k) => `<option value="${k}" ${sd.freq === k ? 'selected' : ''}>${UNIT_WORD[k][Number(sd.interval || 1) === 1 ? 0 : 1]}</option>`).join('')}</select>
+            <select class="input" name="sch_freq" aria-label="Единица">${Object.keys(UNIT_WORD).map((k) => `<option value="${k}" ${sd.freq === k ? 'selected' : ''}>${UNIT_WORD[k][Number(sd.interval || 1) === 1 ? 0 : 1]}</option>`).join('')}<option value="once" ${sd.freq === 'once' ? 'selected' : ''}>еднократно</option></select>
           </div>
         </div>
         <div class="field sch-days" ${sd.freq === 'weekly' ? '' : 'hidden'}><label>В кои дни (по избор — иначе денят на началната дата)</label>
@@ -3475,8 +3686,8 @@ async function openProperty(c, id) {
           <div class="field"><label>До</label><input class="input" name="sch_end_time" type="time" step="900" value="${esc(sd.end_time)}"></div>
         </div>
         <div class="two">
-          <div class="field"><label>Започва на</label><input class="input" name="sch_start_date" type="date" value="${esc(sd.start_date || '')}"></div>
-          <div class="field"><label>До дата (по избор)</label><input class="input" name="sch_until" type="date" value="${esc(sd.until || '')}"></div>
+          <div class="field"><label data-k="sdlabel">${sd.freq === 'once' ? 'Дата' : 'Започва на'}</label><input class="input" name="sch_start_date" type="date" value="${esc(sd.start_date || '')}"></div>
+          <div class="field sch-until" ${sd.freq === 'once' ? 'hidden' : ''}><label>До дата (по избор)</label><input class="input" name="sch_until" type="date" value="${esc(sd.until || '')}"></div>
         </div>
         <div class="sch-sum" data-k="schsum"></div>
         <div class="sch-cal" data-k="schcal"></div>
@@ -3492,12 +3703,21 @@ async function openProperty(c, id) {
   const root = $('pr-root'), f = root.querySelector('.pr-form');
   if (!manage) f.querySelectorAll('input, select, textarea').forEach((x) => { x.disabled = true; });
 
+  // --- contract
+  f.contract_signed.addEventListener('change', () => { root.querySelector('.ctr-box').hidden = !f.contract_signed.checked; });
+  f.contract_pdf?.addEventListener('change', () => {
+    const file = f.contract_pdf.files[0];
+    root.querySelector('[data-k="ctrname"]').textContent = file ? `Избран: ${file.name} (${Math.round(file.size / 1024)} KB) — ще се качи при „Запази“.` : '';
+  });
+  root.querySelector('[data-act="open-ctr"]')?.addEventListener('click', () => openContract(p.contract_file));
+
   // --- schedule UI
   const readSchedule = () => {
     if (!f.sch_on.checked) return null;
     const n = Math.min(365, Math.max(1, Math.round(Number(f.sch_interval.value) || 1)));
     let days = f.sch_freq.value === 'weekly' ? [...f.querySelectorAll('input[name="sch_day"]:checked')].map((x) => x.value) : [];
     if (f.sch_freq.value === 'weekly' && !days.length && f.sch_start_date.value) days = [WD_KEYS[(fromLocal(f.sch_start_date.value).getDay() + 6) % 7]];
+    if (f.sch_freq.value === 'once') return { freq: 'once', interval: 1, byweekday: [], start_time: f.sch_start_time.value, end_time: f.sch_end_time.value, start_date: f.sch_start_date.value, until: null };
     return { freq: f.sch_freq.value, interval: n, byweekday: days,
       start_time: f.sch_start_time.value, end_time: f.sch_end_time.value, start_date: f.sch_start_date.value, until: f.sch_until.value || null };
   };
@@ -3515,6 +3735,10 @@ async function openProperty(c, id) {
     const x = readSchedule();
     root.querySelector('.sch').hidden = !f.sch_on.checked;
     root.querySelector('.sch-days').hidden = f.sch_freq.value !== 'weekly';
+    const isOnce = f.sch_freq.value === 'once';
+    root.querySelector('.sch-every').hidden = isOnce;
+    root.querySelector('.sch-until').hidden = isOnce;
+    root.querySelector('[data-k="sdlabel"]').textContent = isOnce ? 'Дата' : 'Започва на';
     const nNow = Math.max(1, Number(f.sch_interval.value) || 1);
     [...f.sch_freq.options].forEach((o) => { o.textContent = UNIT_WORD[o.value][nNow === 1 ? 0 : 1]; });
     root.querySelectorAll('.sch-quick .opt').forEach((b) => b.classList.toggle('on', b.dataset.fq === f.sch_freq.value && Number(b.dataset.n) === nNow));
@@ -3526,7 +3750,7 @@ async function openProperty(c, id) {
       const per = schPerMonth(x), h = schDurH(x), price = Number(String(f.price.value).replace(',', '.')) || 0;
       const rev = f.price_model.value === 'visit' ? per * price : f.price_model.value === 'hour' ? per * h * price : price;
       const next = schNextDates(x, 6);
-      sumBox.innerHTML = `${ic('repeat')} <span>${esc(schText(x))}<br><b>≈ ${Math.round(per * 10) / 10}</b> почиствания / месец · <b>≈ ${Math.round(per * h * 10) / 10} ч</b> / месец${price ? ` · <b>≈ ${eur(rev)}</b> / месец` : ''}
+      sumBox.innerHTML = `${ic('repeat')} <span>${esc(schText(x))}<br>${x.freq === 'once' ? `<b>${fmtHM(h)}</b>${price ? ` · <b>${eur(f.price_model.value === 'hour' ? price * h : price)}</b>` : ''}` : `<b>≈ ${Math.round(per * 10) / 10}</b> почиствания / месец · <b>≈ ${Math.round(per * h * 10) / 10} ч</b> / месец${price ? ` · <b>≈ ${eur(rev)}</b> / месец` : ''}`}
         ${next.length ? `<span class="sch-next"><span class="lbl">Следващи почиствания</span>${next.map((d) => `<span class="nd">${d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'short' })}</span>`).join('')}</span>` : '<span class="sch-next muted">Няма бъдещи почиствания в този период.</span>'}</span>`;
     }
     if (!manage) { calBox.innerHTML = linked() ? `<div class="sch-linked">${ic('check')} В календара</div>` : ''; return; }
@@ -3568,7 +3792,12 @@ async function openProperty(c, id) {
       district: val('district'), city: val('city'), area_m2: num('area_m2'), access_info: val('access_info'), contact_name: val('contact_name'),
       contact_phone: val('contact_phone'), contact_email: val('contact_email'), contract_start: val('contract_start'), contract_end: val('contract_end'),
       price: num('price'), price_model: val('price_model'), payment_method: val('payment_method'), invoice: f.invoice.checked,
-      schedule, schedule_note: val('schedule_note'), protocol: val('protocol'), notes: val('notes') };
+      schedule, schedule_note: val('schedule_note'), protocol: val('protocol'), notes: val('notes'),
+      service_type: val('service_type') || 'regular', access_method: val('access_method'),
+      contract_signed: f.contract_signed.checked, contract_number: f.contract_signed.checked ? val('contract_number') : null };
+    const pdf = f.contract_pdf?.files?.[0] || null;
+    if (pdf && pdf.type !== 'application/pdf') return fail('Договорът трябва да е PDF файл.');
+    if (pdf && pdf.size > 20 * 1024 * 1024) return fail('PDF файлът е по-голям от 20 MB.');
     const fail = (m) => { saving = false; clAlert(root, 'error', m); root.closest('.sheet-inner')?.scrollTo({ top: 0, behavior: 'smooth' }); };
     if (!row.name) { f.name.focus(); return fail('Въведете име на обекта.'); }
     if (row.contract_start && row.contract_end && row.contract_end < row.contract_start) return fail('Краят на договора е преди началото.');
@@ -3588,6 +3817,15 @@ async function openProperty(c, id) {
       const add = staffIds.filter((x) => !sel.has(x)), rem = [...sel].filter((x) => !staffIds.includes(x));
       if (rem.length) { const { error } = await supabase.from('property_staff').delete().eq('property_id', pid).in('user_id', rem); if (error) throw error; }
       if (add.length) { const { error } = await supabase.from('property_staff').insert(add.map((u) => ({ property_id: pid, user_id: u }))); if (error) throw error; }
+      if (pdf) {
+        const path = `${pid}/dogovor-${Date.now()}.pdf`;
+        const { error: upErr } = await supabase.storage.from('contracts').upload(path, pdf, { contentType: 'application/pdf', upsert: false });
+        if (upErr) throw upErr;
+        const oldFile = prRow?.contract_file;
+        const { error: e4 } = await supabase.from('properties').update({ contract_file: path }).eq('id', pid); if (e4) throw e4;
+        if (oldFile) supabase.storage.from('contracts').remove([oldFile]);
+        row.contract_file = path;
+      }
       const propNow = { ...prRow, ...row, id: pid };
       let msg = prevState ? 'Обектът е запазен.' : 'Обектът е създаден.';
       if (schedule && (addToCalendar || propNow.schedule_event_id)) {
