@@ -1055,6 +1055,9 @@
   .pc-cname:hover { text-decoration: underline; }
   .pc-prop { font-size: 12px; color: var(--ink-2); margin-top: 4px; display: flex; align-items: center; gap: 6px; }
   .pc-prop .ic { width: 14px; height: 14px; }
+  .pc-spec { font-size: 11.5px; color: var(--muted); margin-top: 3px; white-space: normal; line-height: 1.35; }
+  .spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0 14px; }
+  .spec-bools { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 2px 0 10px; }
   .pc-n { font-size: 9.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--rule); padding: 1px 5px; }
   .lnk { color: var(--ink); text-decoration: underline; text-underline-offset: 2px; display: block; }
   .lnk.sm { font-size: 11.5px; color: var(--ink-2); margin-top: 2px; }
@@ -1307,7 +1310,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.29 — обект към съществуващ клиент</div>
+      <div class="version">v0.30 — видове обекти и описание</div>
     </div>
   </aside>
 
@@ -1734,7 +1737,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
    Config — the publishable key is safe to ship in the browser;
    all data access is protected by Row Level Security in Supabase.
 ------------------------------------------------------------------ */
-const ICO = {"plus": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg>", "ring": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"5.5\"/></svg>", "pause": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9.5 6.5v11M14.5 6.5v11\"/></svg>", "crown": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 18h16M5 15l-1.5-8 5 3.5L12 5l3.5 5.5 5-3.5L19 15z\"/></svg>", "compass": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M15.5 8.5l-2 5-5 2 2-5z\"/></svg>", "broom": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M19 4l-6.5 6.5M9.5 11.5l3 3M7.5 12.5c-2 1.5-3 4-3 7h4.5l1-2 1 2h2.5c.5-2.5-.5-5-2.5-6.5\"/></svg>", "chart": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 20h16M7 16v-4M12 16V7M17 16v-6\"/></svg>", "user": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8.5\" r=\"3.5\"/><path d=\"M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5\"/></svg>", "home": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 10.5L12 4l8 6.5V20h-5.5v-5.5h-5V20H4z\"/></svg>", "office": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 20V4h12v16M4 20h16M9.5 8h1M13.5 8h1M9.5 11.5h1M13.5 11.5h1M11 20v-4h2v4\"/></svg>", "shop": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 9.5L6 5h12l1.5 4.5M4.5 9.5h15M4.5 9.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5M6 12v8h12v-8M10 20v-4h4v4\"/></svg>", "blocks": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 20V9l6-3v14M9.5 20V4h11v16M3 20h18M13 8h1M17 8h1M13 11.5h1M17 11.5h1M13 15h1M17 15h1\"/></svg>", "venue": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 20h17M4.5 9.5h15M12 4l8 5.5H4zM7 9.5v8M12 9.5v8M17 9.5v8\"/></svg>", "pin": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 20.5s6.5-5.6 6.5-11a6.5 6.5 0 0 0-13 0c0 5.4 6.5 11 6.5 11z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.3\"/></svg>", "phone": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 4h3l1.5 4-2 1.3a10 10 0 0 0 6.2 6.2l1.3-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 4 6a2 2 0 0 1 2-2z\"/></svg>", "chat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4.5 19.5l1.3-4.3A7.5 7.5 0 1 1 20 11.5z\"/></svg>", "mail": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16v12H4zM4.5 6.5l7.5 6 7.5-6\"/></svg>", "alert": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4l9 16H3zM12 10v4.5M12 17.2v.3\"/></svg>", "map": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5L4 7v12l5-2 6 2 5-2V5l-5 2zM9 5v12M15 7v12\"/></svg>", "code": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5.5l-3 13\"/></svg>", "pencil": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 19.5l1-4L15.5 5.5l3 3-10 10zM13.5 7.5l3 3\"/></svg>", "trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13M10 10.5v6M14 10.5v6\"/></svg>", "repeat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M16.5 3.5l3 3-3 3M4.5 11.5V10a3.5 3.5 0 0 1 3.5-3.5h11.5M7.5 20.5l-3-3 3-3M19.5 12.5V14a3.5 3.5 0 0 1-3.5 3.5H4.5\"/></svg>", "star": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4.5l2.3 4.7 5.2.7-3.8 3.6.9 5.1L12 16.2l-4.6 2.4.9-5.1-3.8-3.6 5.2-.7z\"/></svg>", "back": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9.5 7L4.5 12l5 5M5 12h14.5\"/></svg>", "ext": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5H5v14h14v-4M13 4h7v7M20 4l-9 9\"/></svg>", "check": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>", "x": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/></svg>", "users": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"3\"/><path d=\"M3.5 19c.5-3 2.6-4.5 5.5-4.5s5 1.5 5.5 4.5M15.5 6.2a3 3 0 0 1 0 5.6M17 14.7c2 .5 3.2 2 3.5 4.3\"/></svg>"};
+const ICO = {"plus": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 5v14M5 12h14\"/></svg>", "ring": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"5.5\"/></svg>", "pause": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9.5 6.5v11M14.5 6.5v11\"/></svg>", "crown": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 18h16M5 15l-1.5-8 5 3.5L12 5l3.5 5.5 5-3.5L19 15z\"/></svg>", "compass": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8.5\"/><path d=\"M15.5 8.5l-2 5-5 2 2-5z\"/></svg>", "broom": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M19 4l-6.5 6.5M9.5 11.5l3 3M7.5 12.5c-2 1.5-3 4-3 7h4.5l1-2 1 2h2.5c.5-2.5-.5-5-2.5-6.5\"/></svg>", "chart": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 20h16M7 16v-4M12 16V7M17 16v-6\"/></svg>", "user": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"8.5\" r=\"3.5\"/><path d=\"M5 20c.6-3.6 3.4-5.5 7-5.5s6.4 1.9 7 5.5\"/></svg>", "home": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 10.5L12 4l8 6.5V20h-5.5v-5.5h-5V20H4z\"/></svg>", "office": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 20V4h12v16M4 20h16M9.5 8h1M13.5 8h1M9.5 11.5h1M13.5 11.5h1M11 20v-4h2v4\"/></svg>", "shop": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 9.5L6 5h12l1.5 4.5M4.5 9.5h15M4.5 9.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5c0 1.5 1.2 2.5 2.5 2.5s2.5-1 2.5-2.5M6 12v8h12v-8M10 20v-4h4v4\"/></svg>", "blocks": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 20V9l6-3v14M9.5 20V4h11v16M3 20h18M13 8h1M17 8h1M13 11.5h1M17 11.5h1M13 15h1M17 15h1\"/></svg>", "venue": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M3.5 20h17M4.5 9.5h15M12 4l8 5.5H4zM7 9.5v8M12 9.5v8M17 9.5v8\"/></svg>", "pin": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 20.5s6.5-5.6 6.5-11a6.5 6.5 0 0 0-13 0c0 5.4 6.5 11 6.5 11z\"/><circle cx=\"12\" cy=\"9.5\" r=\"2.3\"/></svg>", "phone": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 4h3l1.5 4-2 1.3a10 10 0 0 0 6.2 6.2l1.3-2 4 1.5v3a2 2 0 0 1-2 2A15 15 0 0 1 4 6a2 2 0 0 1 2-2z\"/></svg>", "chat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M20 11.5a7.5 7.5 0 0 1-10.9 6.7L4.5 19.5l1.3-4.3A7.5 7.5 0 1 1 20 11.5z\"/></svg>", "mail": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6h16v12H4zM4.5 6.5l7.5 6 7.5-6\"/></svg>", "alert": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4l9 16H3zM12 10v4.5M12 17.2v.3\"/></svg>", "map": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5L4 7v12l5-2 6 2 5-2V5l-5 2zM9 5v12M15 7v12\"/></svg>", "code": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8.5 7.5L4 12l4.5 4.5M15.5 7.5L20 12l-4.5 4.5M13.5 5.5l-3 13\"/></svg>", "pencil": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 19.5l1-4L15.5 5.5l3 3-10 10zM13.5 7.5l3 3\"/></svg>", "trash": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4.5 7h15M10 4h4M6.5 7l1 13h9l1-13M10 10.5v6M14 10.5v6\"/></svg>", "repeat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M16.5 3.5l3 3-3 3M4.5 11.5V10a3.5 3.5 0 0 1 3.5-3.5h11.5M7.5 20.5l-3-3 3-3M19.5 12.5V14a3.5 3.5 0 0 1-3.5 3.5H4.5\"/></svg>", "star": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 4.5l2.3 4.7 5.2.7-3.8 3.6.9 5.1L12 16.2l-4.6 2.4.9-5.1-3.8-3.6 5.2-.7z\"/></svg>", "back": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9.5 7L4.5 12l5 5M5 12h14.5\"/></svg>", "ext": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M9 5H5v14h14v-4M13 4h7v7M20 4l-9 9\"/></svg>", "check": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 12.5l4.5 4.5L19 7.5\"/></svg>", "x": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6.5 6.5l11 11M17.5 6.5l-11 11\"/></svg>", "users": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"9\" cy=\"9\" r=\"3\"/><path d=\"M3.5 19c.5-3 2.6-4.5 5.5-4.5s5 1.5 5.5 4.5M15.5 6.2a3 3 0 0 1 0 5.6M17 14.7c2 .5 3.2 2 3.5 4.3\"/></svg>", "tooth": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M8 4.5c-2.5 0-4 1.8-4 4.3 0 2.2 1 3.4 1.6 5.2.6 1.9.8 5.5 2.4 5.5 1.7 0 1.5-4.5 4-4.5s2.3 4.5 4 4.5c1.6 0 1.8-3.6 2.4-5.5.6-1.8 1.6-3 1.6-5.2 0-2.5-1.5-4.3-4-4.3-1.6 0-2.5.8-4 .8s-2.4-.8-4-.8z\"/></svg>", "scissors": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"6.5\" cy=\"7\" r=\"2.5\"/><circle cx=\"6.5\" cy=\"17\" r=\"2.5\"/><path d=\"M8.6 8.4L20 17M8.6 15.6L20 7\"/></svg>", "polish": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M10 3.5h4v5h-4zM8 8.5h8l1 2.5v9.5H7V11zM7 14h10\"/></svg>", "flat": "<svg class=\"ic\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M5 20V4h14v16M3.5 20h17M8.5 7.5h2.5v2.5H8.5zM13 7.5h2.5v2.5H13zM8.5 12.5h2.5V15H8.5zM13 12.5h2.5V15H13zM10.5 20v-2.5h3V20\"/></svg>"};
 const ic = (n) => ICO[n] || '';
 const sdot = (k) => `<span class="sdot ${k}" aria-hidden="true"></span>`;
 const SUPABASE_URL = 'https://dyshtvanqgkhwxzjkxve.supabase.co';
@@ -3136,7 +3139,54 @@ function clientCardStats(c, total) {
 /* ---------- Clients & properties ---------- */
 const CL_STATUS = { prospect: 'Потенциален', active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
 const CL_STATUS_EMO = { prospect: sdot('warn'), active: sdot('ok'), paused: ic('pause'), ended: sdot('bad') };
-const PR_KIND = { office: [ic('office'), 'Офис'], home: [ic('home'), 'Дом'], shop: [ic('shop'), 'Магазин'], building: [ic('blocks'), 'Вход / сграда'], venue: [ic('venue'), 'Заведение / зала'], other: [ic('pin'), 'Друго'] };
+const PR_KIND = { apartment: [ic('flat'), 'Апартамент'], house: [ic('home'), 'Къща'], office: [ic('office'), 'Офис'], dental: [ic('tooth'), 'Дентален кабинет'],
+  salon: [ic('scissors'), 'Бръснарница / фризьорски салон'], nails: [ic('polish'), 'Маникюр / педикюр салон'], shop: [ic('shop'), 'Магазин'],
+  building: [ic('blocks'), 'Вход / сграда'], venue: [ic('venue'), 'Заведение / зала'], other: [ic('pin'), 'Друго'] };
+PR_KIND.home = [ic('home'), 'Дом'];   // old value, no longer offered
+const PR_KIND_PICK = ['apartment', 'house', 'office', 'dental', 'salon', 'nails', 'shop', 'building', 'venue', 'other'];
+// Per-type counts kept in properties.details — [key, label, kind of input ('n' number | 'b' yes/no), short unit for the summary]
+const SPEC = {
+  rooms: ['Стаи', 'n', 'стаи'], bedrooms: ['Спални', 'n', 'спални'], bathrooms: ['Бани', 'n', 'бани'], toilets: ['Отделни тоалетни', 'n', 'WC'],
+  kitchens: ['Кухни / кухненски бокс', 'n', 'кухни'], floors: ['Етажи', 'n', 'етажа'], floor: ['Етаж', 'n', 'ет.'], balconies: ['Тераси / балкони', 'n', 'тераси'],
+  windows: ['Прозорци', 'n', 'прозореца'], workstations: ['Работни места (бюра)', 'n', 'работни места'], offices: ['Отделни кабинети / офиси', 'n', 'кабинета'],
+  meeting: ['Заседателни зали', 'n', 'зали'], chairs: ['Стоматологични столове / кабинети', 'n', 'стола'], waiting: ['Чакални', 'n', 'чакални'],
+  sterile: ['Стерилизационна', 'b', 'стерилизационна'], lab: ['Лаборатория / рентген', 'b', 'лаб./рентген'],
+  stations: ['Работни места (столове)', 'n', 'работни места'], washes: ['Мивки за измиване на коса', 'n', 'мивки'],
+  mani: ['Маникюрни маси', 'n', 'маникюрни маси'], pedi: ['Педикюрни столове', 'n', 'педикюрни стола'],
+  fitting: ['Пробни', 'n', 'пробни'], storage: ['Складове', 'n', 'склада'], showcases: ['Витрини', 'n', 'витрини'],
+  entrances: ['Входове', 'n', 'входа'], flats: ['Апартаменти', 'n', 'апартамента'], elevators: ['Асансьори', 'n', 'асансьора'],
+  halls: ['Зали', 'n', 'зали'], seats: ['Места за сядане', 'n', 'места'],
+  elevator: ['Има асансьор', 'b', 'асансьор'], yard: ['Двор / градина', 'b', 'двор'], pets: ['Домашни любимци', 'b', 'домашни любимци'],
+};
+const SPEC_BY_KIND = {
+  apartment: ['rooms', 'bedrooms', 'bathrooms', 'toilets', 'kitchens', 'balconies', 'windows', 'floor', 'elevator', 'pets'],
+  house: ['floors', 'rooms', 'bedrooms', 'bathrooms', 'toilets', 'kitchens', 'balconies', 'windows', 'yard', 'pets'],
+  home: ['rooms', 'bedrooms', 'bathrooms', 'toilets', 'kitchens', 'balconies', 'windows', 'pets'],
+  office: ['workstations', 'offices', 'meeting', 'kitchens', 'bathrooms', 'toilets', 'floor', 'elevator'],
+  dental: ['chairs', 'waiting', 'bathrooms', 'sterile', 'lab', 'offices', 'floor'],
+  salon: ['stations', 'washes', 'waiting', 'bathrooms', 'storage'],
+  nails: ['mani', 'pedi', 'waiting', 'bathrooms', 'storage'],
+  shop: ['fitting', 'storage', 'showcases', 'bathrooms', 'floors'],
+  building: ['entrances', 'floors', 'flats', 'elevators'],
+  venue: ['halls', 'seats', 'kitchens', 'bathrooms', 'toilets'],
+  other: ['rooms', 'bathrooms', 'toilets', 'kitchens', 'floors'],
+};
+// Short summary like "3 стаи · 2 бани · WC"
+function specText(p, max = 4) {
+  const d = p?.details || {}, keys = SPEC_BY_KIND[p?.kind] || SPEC_BY_KIND.other, out = [];
+  for (const k of keys) {
+    const v = d[k]; if (v === undefined || v === null || v === '' || v === false || v === 0) continue;
+    const [, t, u] = SPEC[k];
+    out.push(t === 'b' ? u : k === 'floor' ? `ет. ${v}` : `${v} ${u}`);
+  }
+  return out.slice(0, max).join(' · ');
+}
+function specFieldsHTML(kind, d = {}) {
+  const keys = SPEC_BY_KIND[kind] || SPEC_BY_KIND.other;
+  const nums = keys.filter((k) => SPEC[k][1] === 'n'), bools = keys.filter((k) => SPEC[k][1] === 'b');
+  return `<div class="spec-grid">${nums.map((k) => `<div class="field"><label>${SPEC[k][0]}</label><input class="input" name="d_${k}" type="number" min="0" step="1" inputmode="numeric" value="${d[k] ?? ''}"></div>`).join('')}</div>
+    ${bools.length ? `<div class="spec-bools">${bools.map((k) => `<label class="check"><input type="checkbox" name="d_${k}" ${d[k] ? 'checked' : ''}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>${SPEC[k][0]}</label>`).join('')}</div>` : ''}`;
+}
 const PR_STATUS = { active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
 const PRICE_MODEL = { visit: 'на посещение', hour: 'на час', month: 'месечно' };
 const PAY_METHOD = { bank: 'Банков превод', cash: 'В брой', card: 'Карта' };
@@ -3223,7 +3273,8 @@ function renderClients() {
     const mcls = H && ['loss', 'bad'].includes(H.k) ? 'm-bad' : H?.k === 'weak' ? 'm-weak' : '';
     const C = {
       client: [`<div class="pc-client">${manageC ? `<button type="button" class="vip-tg ${c.vip ? 'on' : ''}" data-vip="${c.id}" title="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-label="${c.vip ? 'Махни VIP' : 'Направи VIP'}" aria-pressed="${!!c.vip}">${ic('star')}</button>` : ''}<button type="button" class="pc-cname" data-open-client="${c.id}">${esc(c.name)}</button>${c.vip ? '<span class="vip">VIP</span>' : ''}</div>
-        <div class="pc-prop">${p ? `${(PR_KIND[p.kind] || PR_KIND.other)[0]} ${esc(p.name)}` : '<span class="dim">без обект</span>'}${n > 1 ? `<span class="pc-n">${n} обекта</span>` : ''}</div>`, 'c-main'],
+        <div class="pc-prop">${p ? `${(PR_KIND[p.kind] || PR_KIND.other)[0]} ${esc(p.name)}` : '<span class="dim">без обект</span>'}${n > 1 ? `<span class="pc-n">${n} обекта</span>` : ''}</div>
+        ${p ? `<div class="pc-spec">${esc((PR_KIND[p.kind] || PR_KIND.other)[1])}${p.area_m2 ? ` · ${Number(p.area_m2)} м²` : ''}${specText(p) ? ' · ' + esc(specText(p)) : ''}</div>` : ''}`, 'c-main'],
       status: [stBadge(c, p), 'c-st'],
       balance: [balanceHTML(c.id), 'num c-bal'],
       price: [e?.perVisit ? `<b>${eur(e.perVisit)}</b>${p.price_model !== 'visit' ? `<small>${eur(Number(p.price))} ${PRICE_MODEL[p.price_model]}</small>` : ''}` : dash, 'num'],
@@ -3408,7 +3459,7 @@ function renderClientFile(root, c, manage, tab = 'sum') {
       <div class="ulist">${props.length ? props.slice().sort((a, b) => a.name.localeCompare(b.name, 'bg')).map((p) => `
         <button class="urow" type="button" data-prop="${p.id}">
           <div class="avatar emo-av">${(PR_KIND[p.kind] || PR_KIND.other)[0]}</div>
-          <div style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="sub">${esc([p.address, p.neighbourhood, p.city && p.city !== 'София' ? p.city : ''].filter(Boolean).join(', ') || 'без адрес')}${p.schedule_event_id ? ' · в календара' : ''}</div></div>
+          <div style="min-width:0"><div class="nm">${esc(p.name)}</div><div class="sub">${esc([p.address, p.neighbourhood, p.city && p.city !== 'София' ? p.city : ''].filter(Boolean).join(', ') || 'без адрес')}${p.schedule_event_id ? ' · в календара' : ''}</div>${specText(p) ? `<div class="sub">${esc(specText(p))}</div>` : ''}</div>
           <div class="tags">${p.price != null ? `<span class="badge">${eur(p.price)} ${PRICE_MODEL[p.price_model]}</span>` : ''}${p.status !== 'active' ? `<span class="badge pending">${esc(PR_STATUS[p.status])}</span>` : ''}</div>
         </button>`).join('') : '<div class="empty">Няма обекти.</div>'}</div>
     </div>
@@ -3708,7 +3759,7 @@ async function openProperty(c, id) {
     <form class="pr-form" novalidate>
       <div class="field"><label>Име на обекта</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Офис Лозенец, ет. 3"></div>
       <div class="two">
-        <div class="field"><label>Вид</label><select class="input" name="kind">${Object.entries(PR_KIND).map(([k, [, l]]) => `<option value="${k}" ${(p.kind || 'office') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div class="field"><label>Вид</label><select class="input" name="kind">${PR_KIND_PICK.concat(p.kind && !PR_KIND_PICK.includes(p.kind) ? [p.kind] : []).map((k) => `<option value="${k}" ${(p.kind || 'apartment') === k ? 'selected' : ''}>${PR_KIND[k][1]}</option>`).join('')}</select></div>
         <div class="field"><label>Статус</label><select class="input" name="status">${Object.entries(PR_STATUS).map(([k, l]) => `<option value="${k}" ${(p.status || 'active') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       </div>
       <div class="field"><label>Вид услуга</label><select class="input" name="service_type">${Object.entries(SERVICE).map(([k, l]) => `<option value="${k}" ${(p.service_type || 'regular') === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
@@ -3722,6 +3773,8 @@ async function openProperty(c, id) {
         <div class="field"><label>Град</label><input class="input" name="city" value="${esc(p.city ?? 'София')}" autocomplete="off" list="bg-cities"></div>
         <div class="field"><label>Площ (м²)</label><input class="input" name="area_m2" type="number" min="0" step="1" inputmode="decimal" value="${v('area_m2')}"></div>
       </div>
+      <div class="sf-group" data-k="spec-h">Описание на обекта — ${esc((PR_KIND[p.kind || 'apartment'] || PR_KIND.other)[1])}</div>
+      <div data-k="spec">${specFieldsHTML(p.kind || 'apartment', p.details || {})}</div>
       <div class="field"><label>Как влизаме</label><select class="input" name="access_method"><option value="">— не е зададено —</option>${Object.entries(ACCESS).map(([k, l]) => `<option value="${k}" ${p.access_method === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="field"><label>Бележки за достъпа</label><textarea class="input" name="access_info" rows="2" placeholder="код, къде е ключът, вход, паркинг…">${v('access_info')}</textarea></div>
       <div class="sf-group">Контакт на място</div>
@@ -3804,6 +3857,21 @@ async function openProperty(c, id) {
   root.querySelector('[data-act="open-ctr"]')?.addEventListener('click', () => openContract(p.contract_file));
 
   // --- schedule UI
+  // per-type counts: keep values typed for keys that also exist on the newly picked type
+  const readSpec = () => {
+    const out = {};
+    root.querySelectorAll('[data-k="spec"] [name^="d_"]').forEach((x) => {
+      const k = x.name.slice(2);
+      if (x.type === 'checkbox') { if (x.checked) out[k] = true; }
+      else if (x.value !== '') { const n = Math.max(0, Math.round(Number(x.value))); if (isFinite(n)) out[k] = n; }
+    });
+    return out;
+  };
+  f.kind.addEventListener('change', () => {
+    const keep = { ...(p.details || {}), ...readSpec() };
+    root.querySelector('[data-k="spec"]').innerHTML = specFieldsHTML(f.kind.value, keep);
+    root.querySelector('[data-k="spec-h"]').textContent = 'Описание на обекта — ' + (PR_KIND[f.kind.value] || PR_KIND.other)[1];
+  });
   const readSchedule = () => {
     if (!f.sch_on.checked) return null;
     const n = Math.min(365, Math.max(1, Math.round(Number(f.sch_interval.value) || 1)));
@@ -3886,7 +3954,8 @@ async function openProperty(c, id) {
       price: num('price'), price_model: val('price_model'), payment_method: val('payment_method'), invoice: f.invoice.checked,
       schedule, schedule_note: val('schedule_note'), protocol: val('protocol'), notes: val('notes'),
       service_type: val('service_type') || 'regular', access_method: val('access_method'),
-      contract_signed: f.contract_signed.checked, contract_number: f.contract_signed.checked ? val('contract_number') : null };
+      contract_signed: f.contract_signed.checked, contract_number: f.contract_signed.checked ? val('contract_number') : null,
+      details: readSpec() };
     const pdf = f.contract_pdf?.files?.[0] || null;
     if (pdf && pdf.type !== 'application/pdf') return fail('Договорът трябва да е PDF файл.');
     if (pdf && pdf.size > 20 * 1024 * 1024) return fail('PDF файлът е по-голям от 20 MB.');
