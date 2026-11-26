@@ -2060,7 +2060,10 @@ async function showCalendar() {
     calendar = new FullCalendar.Calendar($('cal'), {
       locale: 'bg', firstDay: 1, timeZone: 'local',
       initialView: ls.get(CAL_VIEW_KEY) || (mobile ? 'timeGridDay' : 'timeGridWeek'),
-      views: { timeGrid3: { type: 'timeGrid', duration: { days: 3 }, buttonText: '3 дни' } },
+      views: {
+        timeGrid3: { type: 'timeGrid', duration: { days: 3 }, buttonText: '3 дни' },
+        dayGridMonth: { dayHeaderFormat: { weekday: 'short' } },
+      },
       headerToolbar: false, height: calHeight(),
       nowIndicator: true, scrollTime: `${pad2(Math.max(0, new Date().getHours() - 1))}:00:00`, scrollTimeReset: false,
       slotDuration: '00:30:00', snapDuration: '00:15:00', allDaySlot: true, allDayText: 'цял ден',
