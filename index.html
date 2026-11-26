@@ -640,6 +640,9 @@
   .stat.ok { border-color: var(--ok); background: var(--ok-bg); }
   .stat.ok .val { color: var(--ok); }
   .stat.gain .val { color: var(--ok); }
+  .sf-subgroup { grid-column: 1 / -1; font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-top: 6px; }
+  .sf-span { grid-column: 1 / -1; }
+  .f-tabs { margin: 4px 0 12px; }
   .stat.loss { border-color: var(--accent); }
   .stat.loss .val { color: var(--accent); }
   .stat .val small.psub { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; font-family: inherit; }
@@ -1387,7 +1390,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.34 — финанси: подредба</div>
+      <div class="version">v0.35 — разходи + дял на собствениците</div>
     </div>
   </aside>
 
@@ -1466,7 +1469,12 @@
         </div>
         <span class="badge f-kind" id="f-kind" hidden></span>
       </div>
+      <div class="sf-tabs f-tabs" role="tablist" style="grid-template-columns:1fr 1fr">
+        <button type="button" role="tab" class="sf-tab active" data-ftab="main" aria-selected="true">Обобщение</button>
+        <button type="button" role="tab" class="sf-tab" data-ftab="exp" aria-selected="false">Разходи</button>
+      </div>
       <div id="f-body"></div>
+      <div id="f-exp" hidden></div>
     </section>
 
     <!-- Users -->
@@ -4232,6 +4240,14 @@ async function loadFinances() {
   const box = $('f-body');
   if (!FD) box.innerHTML = '<div class="empty">Зареждане…</div>';
   try {
+    await fetchFinData();
+    renderFinances();
+  } catch (e) {
+    box.innerHTML = `<div class="empty">Финансите не могат да се заредят. ${esc(authMessage(e))}</div>`;
+  }
+}
+async function fetchFinData() {
+  {
     await waitFor(() => window.rrule);
     const [st, ev, pr, cl, sd, pf, cp, sp, ex] = await Promise.all([
       supabase.from('app_settings').select('value').eq('key', 'finance').maybeSingle(),
@@ -4260,11 +4276,10 @@ async function loadFinances() {
     });
     const first = [...blocks.map((b) => b.ym), ...(cp.data || []).map((x) => x.paid_on.slice(0, 7)), ...(ex.data || []).map((x) => x.spent_on.slice(0, 7))].sort()[0] || ymOf(now);
     FD = { blocks, props, cname, now, first, cpays: cp.data || [], spays: sp.data || [], exps: ex.data || [], names: Object.fromEntries((pf.data || []).map((p) => [p.id, fullName(p) || p.email])) };
-    renderFinances();
-  } catch (e) {
-    box.innerHTML = `<div class="empty">Финансите не могат да се заредят. ${esc(authMessage(e))}</div>`;
   }
+  return FD;
 }
+let finTab = 'main';
 
 function finCalc(ym, src = 'done') {
   const cur = ymOf(FD.now), future = ym > cur;
@@ -4312,12 +4327,72 @@ function finChart(series) {
   return s + '</svg>';
 }
 
+
+function renderExpenses() {
+  if (!FD) return;
+  const cur = ymOf(FD.now);
+  const c = { ex: FD.exps.filter((e) => e.spent_on.slice(0, 7) === finYM) };
+  const tot = c.ex.reduce((t, e) => t + Number(e.amount), 0);
+  const byCat = {}; c.ex.forEach((e) => { byCat[e.category] = (byCat[e.category] || 0) + Number(e.amount); });
+  const pm = FD.exps.filter((e) => e.spent_on.slice(0, 7) === ymAdd(finYM, -1)).reduce((t, e) => t + Number(e.amount), 0);
+  const yr = FD.exps.filter((e) => e.spent_on.slice(0, 4) === finYM.slice(0, 4)).reduce((t, e) => t + Number(e.amount), 0);
+  const top = Math.max(1, ...Object.values(byCat));
+  $('f-exp').innerHTML = `
+    <div class="sf-stats f-kpis">
+      <div class="stat"><div class="lbl">Разходи — ${esc(ymLabel(finYM))}</div><div class="val">${eur(tot)}<small class="fdelta">${c.ex.length} записа</small></div></div>
+      <div class="stat"><div class="lbl">Предходен месец</div><div class="val">${eur(pm)}</div></div>
+      <div class="stat"><div class="lbl">От началото на ${finYM.slice(0, 4)}</div><div class="val">${eur(yr)}</div></div>
+      <div class="stat"><div class="lbl">Постоянни / мес</div><div class="val">${eur(+FIN.social + +FIN.accounting + +FIN.solutions)}<small class="fdelta">осигуровки, счетоводител, препарати</small></div></div>
+    </div>
+    <div class="card fcard">
+      <h2>Нов разход</h2>
+      <form class="pay-form exp-form" novalidate>
+        <div class="two">
+          <div class="field"><label>Сума (€)</label><input class="input" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00"></div>
+          <div class="field"><label>Дата</label><input class="input" name="spent_on" type="date" value="${finYM === cur ? ymd(new Date()) : finYM + '-01'}"></div>
+        </div>
+        <div class="two">
+          <div class="field"><label>Категория</label><select class="input" name="category">${Object.entries(EXP_CAT).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
+          <div class="field"><label>Бележка</label><input class="input" name="note" autocomplete="off" placeholder="напр. микрофибърни кърпи"></div>
+        </div>
+        <div class="actions"><button class="btn" type="submit"><span class="label">${ic('plus')} Добави разход</span></button></div>
+      </form>
+    </div>
+
+    <div class="card fcard">
+      <h2>По категории — ${esc(ymLabel(finYM))}</h2>
+      ${Object.keys(byCat).length ? Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([k, v]) => `<div class="hbar"><div class="n">${esc(EXP_CAT[k] || k)}</div><div class="t"><i style="width:${Math.max(2, v / top * 100)}%"></i></div><div class="v">${eur(v)}<small>${Math.round(v / tot * 100)}%</small></div></div>`).join('') : '<div class="empty sm">Няма записани разходи за месеца.</div>'}
+    </div>
+    <div class="card fcard">
+      <h2>Записи — ${esc(ymLabel(finYM))}</h2>
+      <div class="pay-list">${c.ex.length ? c.ex.map((e) => `<div class="pay-row"><div><b>${eur(e.amount)}</b> <span class="muted">${esc(EXP_CAT[e.category] || e.category)}</span><small>${new Date(e.spent_on).toLocaleDateString('bg-BG')}${e.note ? ' · ' + esc(e.note) : ''}${FD.names[e.created_by] ? ' · ' + esc(FD.names[e.created_by]) : ''}</small></div>${isOwner() ? `<button type="button" class="sq-btn sq-del" data-del-exp="${e.id}" title="Изтрий" aria-label="Изтрий разхода"><span class="emo">${ic('trash')}</span></button>` : ''}</div>`).join('') : '<div class="empty sm">Няма записани разходи за месеца.</div>'}</div>
+    </div>`;
+  $('f-exp').querySelector('.exp-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const f = e.target, amount = Number(String(f.amount.value).replace(',', '.'));
+    if (!(amount > 0)) return toast('Въведете сума.');
+    if (!f.spent_on.value) return toast('Изберете дата.');
+    const btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
+    const { error } = await supabase.from('expenses').insert({ amount, spent_on: f.spent_on.value, category: f.category.value, note: f.note.value.trim() || null });
+    busy(btn, false);
+    if (error) return toast(authMessage(error));
+    toast('Разходът е записан.'); finYM = f.spent_on.value.slice(0, 7); loadFinances();
+  });
+  $('f-exp').querySelectorAll('[data-del-exp]').forEach((b) => b.addEventListener('click', async () => {
+    const x = FD.exps.find((e) => e.id === b.dataset.delExp);
+    if (!(await confirmDialog({ title: 'Изтриване на разхода?', text: `${eur(x.amount)} · ${EXP_CAT[x.category] || ''}${x.note ? ' · ' + x.note : ''}`, ok: 'Изтрий' }))) return;
+    const { error } = await supabase.from('expenses').delete().eq('id', x.id);
+    if (error) return toast(authMessage(error));
+    toast('Разходът е изтрит.'); loadFinances();
+  }));
+}
 function renderFinances() {
   if (!FD) return;
   const cur = ymOf(FD.now), cmp = finYM === cur;                 // running month: done vs whole month side by side
   const c = finCalc(finYM, 'done'), P = cmp ? finCalc(finYM, 'plan') : c;
   const pm = finCalc(ymAdd(finYM, -1), 'plan');
   $('f-month').textContent = ymLabel(finYM);
+  renderExpenses();
   $('f-kind').hidden = false;
   $('f-kind').textContent = finYM > cur ? 'Прогноза по графика' : cmp ? 'Месецът е в ход' : 'Изпълнено';
   const delta = (a, b) => (!b ? '' : `<small class="fdelta ${a >= b ? 'up' : 'down'}">${a >= b ? '▲' : '▼'} ${Math.abs(Math.round((a - b) / Math.abs(b) * 100))}% спрямо ${ymShort(ymAdd(finYM, -1))}</small>`);
@@ -4437,22 +4512,6 @@ function renderFinances() {
       </tbody></table></div><p class="note">Печалба = приход − заплати − постоянни разходи ${eur(BIZ.overheadPerHour)}/ч − материали ${eur(FIN.matPerHour)}/ч (преди данък). Най-слабите са първи.</p>` : '<div class="empty sm">Няма почиствания с цена за този месец.</div>'}
     </div>
 
-    <div class="card fcard">
-      <h2>Разходи — ${esc(ymLabel(finYM))}</h2>
-      <form class="pay-form exp-form" novalidate>
-        <div class="two">
-          <div class="field"><label>Сума (€)</label><input class="input" name="amount" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0,00"></div>
-          <div class="field"><label>Дата</label><input class="input" name="spent_on" type="date" value="${finYM === cur ? ymd(new Date()) : finYM + '-01'}"></div>
-        </div>
-        <div class="two">
-          <div class="field"><label>Категория</label><select class="input" name="category">${Object.entries(EXP_CAT).map(([k, l]) => `<option value="${k}">${l}</option>`).join('')}</select></div>
-          <div class="field"><label>Бележка</label><input class="input" name="note" autocomplete="off" placeholder="напр. микрофибърни кърпи"></div>
-        </div>
-        <div class="actions"><button class="btn" type="submit"><span class="label">${ic('plus')} Добави разход</span></button></div>
-      </form>
-      <div class="pay-list">${c.ex.length ? c.ex.map((e) => `<div class="pay-row"><div><b>${eur(e.amount)}</b> <span class="muted">${esc(EXP_CAT[e.category] || e.category)}</span><small>${new Date(e.spent_on).toLocaleDateString('bg-BG')}${e.note ? ' · ' + esc(e.note) : ''}${FD.names[e.created_by] ? ' · ' + esc(FD.names[e.created_by]) : ''}</small></div>${isOwner() ? `<button type="button" class="sq-btn sq-del" data-del-exp="${e.id}" title="Изтрий" aria-label="Изтрий разхода"><span class="emo">${ic('trash')}</span></button>` : ''}</div>`).join('') : '<div class="empty sm">Няма записани разходи за месеца.</div>'}</div>
-    </div>
-
     ${isOwner() ? `<details class="card fcard fset"><summary><h2>Модел на разходите</h2><small class="muted">важи за всички месеци и за маржовете в Клиенти</small></summary>
       <form class="fset-form" novalidate>
         <div class="spec-grid">
@@ -4470,28 +4529,10 @@ function renderFinances() {
       </form></details>` : ''}`;
 
   $('f-body').querySelectorAll('.fbar').forEach((g) => g.addEventListener('click', () => { finYM = g.dataset.ym; renderFinances(); }));
-  $('f-body').querySelector('.exp-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const f = e.target, amount = Number(String(f.amount.value).replace(',', '.'));
-    if (!(amount > 0)) return toast('Въведете сума.');
-    if (!f.spent_on.value) return toast('Изберете дата.');
-    const btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
-    const { error } = await supabase.from('expenses').insert({ amount, spent_on: f.spent_on.value, category: f.category.value, note: f.note.value.trim() || null });
-    busy(btn, false);
-    if (error) return toast(authMessage(error));
-    toast('Разходът е записан.'); finYM = f.spent_on.value.slice(0, 7); loadFinances();
-  });
-  $('f-body').querySelectorAll('[data-del-exp]').forEach((b) => b.addEventListener('click', async () => {
-    const x = FD.exps.find((e) => e.id === b.dataset.delExp);
-    if (!(await confirmDialog({ title: 'Изтриване на разхода?', text: `${eur(x.amount)} · ${EXP_CAT[x.category] || ''}${x.note ? ' · ' + x.note : ''}`, ok: 'Изтрий' }))) return;
-    const { error } = await supabase.from('expenses').delete().eq('id', x.id);
-    if (error) return toast(authMessage(error));
-    toast('Разходът е изтрит.'); loadFinances();
-  }));
   $('f-body').querySelector('.fset-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const f = e.target, n = (k) => Math.max(0, Number(String(f[k].value).replace(',', '.')) || 0);
-    const owners = (FIN.owners || []).map((o, i) => ({ name: o.name, pct: n('own' + i) }));
+    const owners = (FIN.owners || []).map((o, i) => ({ ...o, pct: n('own' + i) }));
     if (Math.round(owners.reduce((t, o) => t + o.pct, 0)) !== 100) return toast('Дяловете на собствениците трябва да са общо 100%.');
     const value = { ...FIN, social: n('social'), accounting: n('accounting'), solutions: n('solutions'), loadH: Math.max(1, n('loadH')), matPerHour: n('matPerHour'), corpTax: n('corpTax'), divTax: n('divTax'), owners };
     const btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
@@ -4501,6 +4542,11 @@ function renderFinances() {
     applyFinanceSettings(value); toast('Моделът е запазен.'); renderFinances();
   });
 }
+document.querySelectorAll('[data-ftab]').forEach((t) => t.addEventListener('click', () => {
+  finTab = t.dataset.ftab;
+  document.querySelectorAll('[data-ftab]').forEach((x) => { x.classList.toggle('active', x === t); x.setAttribute('aria-selected', String(x === t)); });
+  $('f-body').hidden = finTab !== 'main'; $('f-exp').hidden = finTab !== 'exp';
+}));
 $('f-prev').addEventListener('click', () => { finYM = ymAdd(finYM, -1); renderFinances(); });
 $('f-next').addEventListener('click', () => { finYM = ymAdd(finYM, 1); renderFinances(); });
 $('f-today').addEventListener('click', () => { finYM = ymOf(new Date()); renderFinances(); });
@@ -4748,6 +4794,24 @@ function mountStaffFile(root, p, perms) {
         tile('За изплащане сега', eur(Math.max(0, n.owed)), n.owed > 0.004 ? 'warn' : '') +
         tile(`Прогноза заплата — ${m}`, eur(n.payMonth)) + tile(`Прогноза заплата — ${nx}`, eur(n.payNext)) +
         (n.owed < -0.004 ? tile('Аванс (надплатено)', eur(-n.owed), 'ok') : '');
+      // owners: their share of the company profit (after corporate and dividend tax)
+      const oi = canFinance() ? (FIN.owners || []).findIndex((o) => o.user_id === p.id) : -1;
+      if (oi >= 0) {
+        const box = q('[data-k="money"]');
+        box.insertAdjacentHTML('beforeend', '<div class="stat sf-span"><div class="lbl">Дял от печалбата</div><div class="val"><small class="psub">Изчисляване…</small></div></div>');
+        try {
+          await fetchFinData();
+          const cur = ymOf(FD.now), nx = ymAdd(cur, 1), own = (ym, src) => finCalc(ym, src).owners[oi] || { net: 0 };
+          let all = 0; for (let ym = FD.first; ym <= cur; ym = ymAdd(ym, 1)) all += own(ym, 'done').net;
+          const o = FIN.owners[oi], st = (l, v, sub) => tile(l, `${eur(v)}${sub ? `<small class="psub">${sub}</small>` : ''}`, v > 0.004 ? 'gain' : '');
+          box.lastElementChild.remove();
+          box.insertAdjacentHTML('beforeend', `<div class="sf-subgroup">Дял от печалбата (${o.pct}%, след данъците)</div>` +
+            st('Печалба — общо досега', all, 'от изпълнените почиствания') +
+            st(`Печалба — ${m} (изпълнено)`, own(cur, 'done').net) +
+            st(`Печалба — ${m} (целият месец)`, own(cur, 'plan').net, 'с планираните') +
+            st(`Прогноза печалба — ${nx === ymOf(n.nStart) ? monthName(n.nStart) : ymLabel(nx)}`, own(nx, 'plan').net));
+        } catch { box.lastElementChild?.remove(); }
+      }
       if (perms.profit && n.profit) {
         const P = n.profit;
         const ptile = (label, t) => tile(label, t.n ? `${t.net < 0 ? '' : '+'}${eur(t.net)}<small class="psub">от ${eur(t.rev)} приход · ${t.n} почиств.</small>` : '<span class="dim">—</span>',
