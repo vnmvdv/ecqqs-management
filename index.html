@@ -1051,6 +1051,13 @@
   .mchip { font-size: 11.5px; padding: 3px 8px; border: 1px solid var(--ink); display: inline-block; white-space: nowrap; }
   .mchip.m-invoice { background: var(--ink); color: var(--paper); }
   .ptbl .mg { width: 190px; }
+  @media (min-width: 861px) {
+    .ptbl td small { white-space: nowrap; max-width: none; }
+    .ptbl td.c-addr { min-width: 220px; white-space: normal; }
+    .ptbl td.c-addr small { white-space: normal; max-width: 240px; }
+    .ptbl td.c-contact { min-width: 170px; }
+    .ptbl .lnk.addr { max-width: 240px; }
+  }
 
   /* phone: each row becomes a card */
   @media (max-width: 860px) {
