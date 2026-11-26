@@ -4681,7 +4681,7 @@ function renderFinances() {
   }
   const mPct = (net, rev) => (rev > 0 ? net / rev * 100 : null);
   const mChip = (label, net, rev, sub) => { const v = mPct(net, rev); const k = v === null ? '' : health(v).k;
-    return `<div class="mchip mk-${k}"><small>${label}</small><b>${v === null ? '—' : Math.round(v * 10) / 10 + '%'}</b><span>${v === null ? 'няма приход' : `${eur0(net)} от ${eur0(rev)}`}${sub ? ' · ' + sub : ''}</span></div>`; };
+    return `<div class="mchip mk-${k}"><small>${label}</small><b>${v === null ? '—' : (Math.round(v * 10) / 10).toLocaleString('bg-BG') + '%'}</b><span>${v === null ? 'няма приход' : `${eur0(net)} от ${eur0(rev)}`}${sub ? ' · ' + sub : ''}</span></div>`; };
   const marginStrip = `<div class="mchips">
     ${cmp ? mChip(`Марж ${ymShort(finYM)} · изпълнено`, c.dist, c.rev) + mChip(`Марж ${ymShort(finYM)} · целият месец`, P.dist, P.rev)
           : mChip(`Марж ${esc(ymLabel(finYM))}`, c.dist, c.rev, c.future ? 'прогноза' : '')}
