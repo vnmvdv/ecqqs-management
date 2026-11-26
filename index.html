@@ -1093,6 +1093,19 @@
   .ftbl td small { display: block; color: var(--muted); font-size: 11.5px; }
   .ftbl .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; } .ftbl .neg { color: var(--accent); font-weight: 600; }
   .warnline { color: var(--warn); }
+  .dist { display: grid; }
+  .drow { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(60px, 1fr) auto 52px; gap: 4px 12px; align-items: center; padding: 6px 0; border-bottom: 1px dotted var(--rule); font-size: 13px; }
+  .drow .dl em { display: block; font-style: normal; color: var(--muted); font-size: 11px; }
+  .drow .db { height: 10px; background: var(--paper-2); } .drow .db i { display: block; height: 100%; background: #8C8C86; }
+  .drow .dv { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; font-weight: 600; }
+  .drow .dp { text-align: right; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .drow.rev { font-weight: 700; border-bottom: 1px solid var(--ink); } .drow.rev .db i { background: var(--ink); }
+  .drow.est .dl { color: var(--muted); } .drow.est .db i { background: repeating-linear-gradient(45deg, #8C8C86 0 3px, transparent 3px 6px); }
+  .drow.sum { font-weight: 700; border-top: 1px solid var(--ink); } .drow.sum .db i, .drow.tot .db i { background: var(--ok); }
+  .drow.tot { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; font-size: 14.5px; } .drow.tot .dv { color: var(--ok); }
+  .drow.neg .dv { color: var(--accent); } .drow.neg .db i { background: var(--accent); }
+  .f-kind { align-self: center; }
+  @media (max-width: 560px) { .drow { grid-template-columns: minmax(0, 1fr) auto 44px; } .drow .db { grid-column: 1 / -1; grid-row: 2; } }
   .fset summary { cursor: pointer; list-style: none; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
   .fset summary h2 { margin: 0; } .fset[open] summary { margin-bottom: 12px; }
   .exp-form { margin-bottom: 10px; }
@@ -1352,7 +1365,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.31 — финанси</div>
+      <div class="version">v0.32 — разпределение</div>
     </div>
   </aside>
 
@@ -1429,10 +1442,11 @@
           <button class="fm-label" id="f-today" title="Към текущия месец"><span id="f-month">—</span></button>
           <button class="sq-btn" id="f-next" title="Следващ месец" aria-label="Следващ месец"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></span></button>
         </div>
-        <div class="chips" id="f-src" role="group" aria-label="Кои почиствания">
-          <button class="chip active" data-src="done" aria-pressed="true">Изпълнени</button>
-          <button class="chip" data-src="plan" aria-pressed="false">С прогноза</button>
+        <div class="chips" id="f-src" role="group" aria-label="Кои почиствания от текущия месец да се броят">
+          <button class="chip active" data-src="done" aria-pressed="true" title="Само почистванията, които вече са минали">Само изпълнените</button>
+          <button class="chip" data-src="plan" aria-pressed="false" title="Изпълнените + планираните до края на месеца">Целият месец</button>
         </div>
+        <span class="badge f-kind" id="f-kind" hidden></span>
       </div>
       <div id="f-body"></div>
     </section>
@@ -4283,6 +4297,9 @@ function renderFinances() {
   const c = finCalc(finYM), pm = finCalc(ymAdd(finYM, -1)), cur = ymOf(FD.now);
   $('f-month').textContent = ymLabel(finYM);
   document.querySelectorAll('#f-src button').forEach((b) => { const on = b.dataset.src === finSrc; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+  $('f-src').hidden = finYM !== cur;                         // the choice only matters while a month is in progress
+  $('f-kind').hidden = finYM === cur;
+  $('f-kind').textContent = finYM > cur ? 'Прогноза по графика' : 'Изпълнено';
   const delta = (a, b) => (!b ? '' : `<small class="fdelta ${a >= b ? 'up' : 'down'}">${a >= b ? '▲' : '▼'} ${Math.abs(Math.round((a - b) / Math.abs(b) * 100))}% спрямо ${ymShort(ymAdd(finYM, -1))}</small>`);
   const kpi = (l, v, d, cls = '') => `<div class="stat ${cls}"><div class="lbl">${l}</div><div class="val">${v}${d}</div></div>`;
   const dr = (l, rule, v, cls = '') => `<div class="pb-row ${cls}"><span>${esc(l)}${rule ? ` <em>${esc(rule)}</em>` : ''}</span><b>${v}</b></div>`;
@@ -4307,7 +4324,14 @@ function renderFinances() {
   }
   const prow = Object.values(byP).map((r) => ({ ...r, prof: r.rev - r.cost, m: r.rev ? (r.rev - r.cost) / r.rev * 100 : 0 })).sort((a, b) => a.m - b.m);
 
-  const top = Math.max(1, ...c.lines.map((x) => x.v));
+  // one line of the distribution: label · bar · amount · % of revenue
+  const base = c.rev > 0 ? c.rev : Math.max(1, c.costs);
+  const drow = (l, rule, v, cls) => {
+    const pct = c.rev > 0 ? Math.round(Math.abs(v) / c.rev * 1000) / 10 : null;
+    return `<div class="drow ${cls}"><div class="dl">${esc(l)}${rule ? `<em>${esc(rule)}</em>` : ''}</div>
+      <div class="db"><i style="width:${Math.min(100, Math.abs(v) / base * 100)}%"></i></div>
+      <div class="dv">${v < 0 ? '−' : ''}${eur(Math.abs(v))}</div><div class="dp">${pct === null ? '' : pct.toLocaleString('bg-BG') + '%'}</div></div>`;
+  };
   $('f-body').innerHTML = `
     <div class="sf-stats f-kpis">
       ${kpi('Приход', eur0(c.rev), delta(c.rev, pm.rev))}
@@ -4315,7 +4339,9 @@ function renderFinances() {
       ${kpi('Печалба преди данък', eur0(c.pre), delta(c.pre, pm.pre), c.pre < 0 ? 'loss' : '')}
       ${kpi('За разпределяне', eur0(c.dist), `<small class="fdelta">след ${FIN.corpTax}% корпоративен данък</small>`, c.dist < 0 ? 'loss' : 'gain')}
     </div>
-    ${finYM === cur && finSrc === 'done' ? `<p class="note">${esc(ymLabel(cur))} е в ход — приходът е само от вече изпълнените почиствания, а постоянните разходи са за целия месец.${c.pending > 0.5 ? ` Още <b>${eur(c.pending)}</b> са планирани до края на месеца.` : ''}</p>` : ''}
+    ${finYM === cur ? `<p class="note">${esc(ymLabel(cur))} е в ход. ${finSrc === 'done'
+      ? `Показани са само вече изпълнените почиствания${c.pending > 0.5 ? ` — още <b>${eur(c.pending)}</b> са планирани до края на месеца (вижте „Целият месец“)` : ''}. Постоянните разходи са за целия месец.`
+      : 'Показани са изпълнените + планираните до края на месеца.'}${!FD.blocks.some((b) => b.ym === cur) ? ' Този месец няма почиствания в календара.' : ''}</p>` : ''}
     ${c.future ? `<p class="note">Бъдещ месец — числата са прогноза по графиците в календара.</p>` : ''}
     ${c.pre < 0 && c.live ? `<div class="alert error">${ICONS.error}<span>Месецът е на загуба (${eur(c.pre)} преди данък). Постоянните разходи се плащат и при малко почиствания.</span></div>` : ''}
     ${c.unassigned || c.unpriced ? `<p class="note warnline">${c.unassigned ? `${c.unassigned} почиств. нямат назначен хигиенист (без заплата в сметката). ` : ''}${c.unpriced ? `${c.unpriced} почиств. са към обект без цена (без приход).` : ''}</p>` : ''}
@@ -4327,26 +4353,20 @@ function renderFinances() {
         ${finChart(series)}
       </div>
       <div class="card fcard">
-        <h2>Как се разпределят ${eur0(c.rev)}</h2>
-        <div class="pbreak flat">
-          ${dr(`Приход${c.n ? ` (${c.n} почиств.)` : ''}`, '', eur(c.rev), 'sum0')}
-          ${c.lines.map((x) => dr(x.l, x.rule, '−' + eur(x.v), x.est ? 'est' : '')).join('')}
-          ${dr('= Печалба преди данък', '', eur(c.pre), 'sum' + (c.pre < 0 ? ' neg' : ''))}
-          ${dr(`Корпоративен данък ${FIN.corpTax}%`, '', '−' + eur(c.corp))}
-          ${dr('= За разпределяне', '', eur(c.dist), 'tot' + (c.dist < 0 ? ' neg' : ''))}
-        </div>
-      </div>
-    </div>
-
-    <div class="fgrid">
-      <div class="card fcard">
-        <h2>Къде отиват парите</h2>
-        ${c.lines.filter((x) => x.v > 0).sort((a, b) => b.v - a.v).map((x) => `<div class="hbar"><div class="n">${esc(x.l)}</div><div class="t"><i style="width:${Math.max(2, x.v / top * 100)}%"></i></div><div class="v">${eur0(x.v)}${c.rev ? `<small>${Math.round(x.v / c.rev * 100)}%</small>` : ''}</div></div>`).join('') || '<div class="empty sm">Няма разходи.</div>'}
-      </div>
-      <div class="card fcard">
         <h2>Собственици</h2>
         <div class="owners">${c.owners.map((o) => `<div class="owner"><div><b>${esc(o.name)}</b><small>${o.pct}% собственост</small></div><div class="ov">${eur(o.net)}</div><small>дял ${eur(o.share)} − дивидентен данък ${FIN.divTax}% ${eur(o.dt)}</small></div>`).join('')}</div>
         ${c.dist <= 0 ? '<p class="note">Няма печалба за разпределяне този месец.</p>' : ''}
+      </div>
+    </div>
+
+    <div class="card fcard">
+      <h2>Разпределение на ${eur0(c.rev)}</h2>
+      <div class="dist">
+        ${drow(`Приход${c.n ? ` · ${c.n} почиств.` : ''}`, '', c.rev, 'rev')}
+        ${c.lines.map((x) => drow(x.l, x.rule, -x.v, 'cost' + (x.est ? ' est' : ''))).join('')}
+        ${drow('= Печалба преди данък', '', c.pre, 'sum' + (c.pre < 0 ? ' neg' : ''))}
+        ${drow(`Корпоративен данък ${FIN.corpTax}%`, '', -c.corp, 'cost')}
+        ${drow('= За разпределяне', '', c.dist, 'tot' + (c.dist < 0 ? ' neg' : ''))}
       </div>
     </div>
 
