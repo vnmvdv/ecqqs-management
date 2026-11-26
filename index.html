@@ -1107,7 +1107,7 @@
   .f-kind { align-self: center; }
   .stat.two .vv { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px; }
   .stat.two .vv small, .ov2 small { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-family: var(--font-ui); font-weight: 600; }
-  .stat.two .vv b { font-family: var(--font-mono); font-size: 18px; font-variant-numeric: tabular-nums; }
+  .stat.two .vv b { font-family: var(--font-mono); font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .stat.two .vv > div + div { border-left: 1px solid var(--rule); padding-left: 8px; }
   .stat.two.gain .vv b { color: var(--ok); } .stat.two.loss .vv b { color: var(--accent); }
   .ov2 { display: grid; grid-template-columns: auto auto; gap: 14px; text-align: right; }
@@ -4394,7 +4394,7 @@ function renderFinances() {
       <div class="dist">
         ${cmp ? `<div class="drow cmp dhead"><div></div><div>Изпълнено · ${c.n} почиств.</div><div>Целият месец · ${P.n} почиств.</div></div>` : ''}
         ${drow(`Приход${!cmp && c.n ? ` · ${c.n} почиств.` : ''}`, '', (x) => x.rev, 'rev')}
-        ${P.lines.map((y) => drow(y.l, y.rule, (x) => lineV(x, y.l), 'cost' + (y.est ? ' est' : ''))).join('')}
+        ${P.lines.map((y) => drow(y.l, cmp && y.l === 'Заплати на хигиенистите' ? `${hrs(c.hours)} изпълнени / ${hrs(P.hours)} за месеца` : y.rule, (x) => lineV(x, y.l), 'cost' + (y.est ? ' est' : ''))).join('')}
         ${drow('= Печалба преди данък', '', (x) => x.pre, 'sum' + (P.pre < 0 ? ' neg' : ''))}
         ${drow(`Корпоративен данък ${FIN.corpTax}%`, '', (x) => -x.corp, 'cost')}
         ${drow('= За разпределяне', '', (x) => x.dist, 'tot' + (P.dist < 0 ? ' neg' : ''))}
