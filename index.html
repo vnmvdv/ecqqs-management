@@ -949,6 +949,13 @@
   .chip.icon.active .sdot.sdot { box-shadow: 0 0 0 2px var(--ink); }
   .badge .sdot.sdot, .pf-sub .sdot.sdot { width: 7px; height: 7px; margin-right: 4px; vertical-align: 1px; }
   .badge .ic, .pf-sub .ic { width: 12px; height: 12px; vertical-align: -2px; }
+
+  /* confirm dialog + delete square */
+  dialog.sheet.confirm { width: min(420px, calc(100vw - 32px)); margin: auto; }
+  @media (max-width: 560px) { dialog.sheet.confirm { width: calc(100vw - 32px); margin: auto; border: 1px solid var(--ink); box-shadow: var(--shadow-card); } }
+  dialog.sheet.confirm .actions { display: grid; grid-template-columns: 1fr 1fr; }
+  .sf-quick .sq-del { margin-left: auto; color: var(--accent); border-color: var(--accent); }
+  .sf-quick .sq-del:hover { background: var(--accent); color: #fff; }
 </style>
 </head>
 <body>
@@ -1103,7 +1110,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.19 — минималистични икони</div>
+      <div class="version">v0.20 — изтриване на клиенти</div>
     </div>
   </aside>
 
@@ -1358,6 +1365,18 @@
       <p class="note" id="ev-rec-note" hidden>Промените важат за всички повторения на това събитие.</p>
       <div class="actions"><button class="btn" type="submit" id="ev-save"><span class="label">Запази</span></button></div>
     </form>
+  </div>
+</dialog>
+
+<!-- Confirm -->
+<dialog class="sheet confirm" id="dlg-confirm" aria-labelledby="cf-title">
+  <div class="sheet-inner">
+    <h2 id="cf-title">Сигурни ли сте?</h2>
+    <p class="lead" id="cf-text"></p>
+    <div class="actions">
+      <button class="btn secondary" type="button" id="cf-cancel"><span class="label">Отказ</span></button>
+      <button class="btn danger" type="button" id="cf-ok"><span class="label">Изтрий</span></button>
+    </div>
   </div>
 </dialog>
 
@@ -2748,6 +2767,23 @@ $('ev-form').addEventListener('submit', async (e) => {
 
 
 
+/* ---------- Confirmation dialog ---------- */
+function confirmDialog({ title = 'Сигурни ли сте?', text = '', ok = 'Изтрий' } = {}) {
+  return new Promise((resolve) => {
+    const d = $('dlg-confirm');
+    $('cf-title').textContent = title; $('cf-text').textContent = text;
+    $('cf-ok').querySelector('.label').innerHTML = ic('trash') + ' ' + esc(ok);
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; d.close(); resolve(v); };
+    $('cf-ok').onclick = () => finish(true);
+    $('cf-cancel').onclick = () => finish(false);
+    d.onclose = () => finish(false);
+    d.onclick = (e) => { if (e.target === d) finish(false); };
+    d.showModal();
+    requestAnimationFrame(() => $('cf-cancel').focus());
+  });
+}
+
 /* ---------- Clients & properties ---------- */
 const CL_STATUS = { prospect: 'Потенциален', active: 'Активен', paused: 'Пауза', ended: 'Приключил' };
 const CL_STATUS_EMO = { prospect: sdot('warn'), active: sdot('ok'), paused: ic('pause'), ended: sdot('bad') };
@@ -2833,7 +2869,7 @@ function clientDataForm(c, manage) {
     <div class="field"><label>Откъде дойде</label><input class="input" name="source" value="${v('source')}" autocomplete="off" list="cl-sources" placeholder="напр. препоръка, Google, Facebook"></div>
     <div class="field"><label>Бележки</label><textarea class="input" name="notes" rows="3">${v('notes')}</textarea></div>
     ${manage ? `<div class="actions"><button class="btn" type="submit"><span class="label">${c ? 'Запази' : 'Създай клиент'}</span></button>
-      ${c && isOwner() ? '<button class="btn ghost-danger" type="button" data-act="del"><span class="label">Изтрий клиента</span></button>' : ''}</div>` : ''}
+      ${c && isOwner() ? `<button class="btn ghost-danger" type="button" data-act="del"><span class="label">${ic('trash')} Изтрий клиента</span></button>` : ''}</div>` : ''}
   </form>`;
 }
 
@@ -2865,6 +2901,7 @@ function renderClientFile(root, c, manage, tab = 'sum') {
       <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? telHref(c.contact_phone) : '#'}" title="Обаждане" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>
       <a class="sq-btn ${c.contact_phone ? '' : 'off'}" href="${c.contact_phone ? viberHref(c.contact_phone) : '#'}" title="Viber" aria-label="Viber"><span class="emo">${ic('chat')}</span></a>
       <a class="sq-btn ${c.contact_email ? '' : 'off'}" href="${c.contact_email ? 'mailto:' + esc(c.contact_email) : '#'}" title="Имейл" aria-label="Имейл"><span class="emo">${ic('mail')}</span></a>
+      ${isOwner() ? `<button type="button" class="sq-btn sq-del" data-act="del-client" title="Изтрий клиента" aria-label="Изтрий клиента"><span class="emo">${ic('trash')}</span></button>` : ''}
     </div>
     <div class="sf-tabs" style="grid-template-columns:repeat(${tabs.length},1fr)" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" class="sf-tab${k === tab ? ' active' : ''}" data-tab="${k}">${l}</button>`).join('')}</div>
     <div class="sf-alert" role="alert"></div>
@@ -2906,6 +2943,7 @@ function renderClientFile(root, c, manage, tab = 'sum') {
   root.querySelector('[data-act="add-prop"]')?.addEventListener('click', () => openProperty(c, null));
   root.querySelectorAll('[data-prop]').forEach((b) => b.addEventListener('click', () => openProperty(c, b.dataset.prop)));
   bindClientForm(root, c);
+  root.querySelector('[data-act="del-client"]')?.addEventListener('click', () => deleteClient(root, c));
   if (tab === 'access') loadClientUsers(root, c);
 }
 
@@ -2943,17 +2981,22 @@ function bindClientForm(root, c) {
     toast(c ? 'Клиентът е запазен.' : 'Клиентът е създаден.');
     await refreshClient(res.data.id, c ? 'data' : 'props');
   });
-  const del = f.querySelector('[data-act="del"]');
-  del?.addEventListener('click', async () => {
-    if (del.dataset.armed !== '1') {
-      del.dataset.armed = '1'; del.className = 'btn danger'; del.querySelector('.label').textContent = 'Потвърди — изтрий завинаги';
-      clAlert(root, 'info', 'Ще бъдат изтрити клиентът и всички негови обекти. Ако клиентът просто е спрял, сменете статуса на „Приключил“.');
-      return;
-    }
-    const { error } = await supabase.from('clients').delete().eq('id', c.id);
-    if (error) return clAlert(root, 'error', authMessage(error));
-    $('dlg-client').close(); toast('Клиентът е изтрит.'); clients = clients.filter((x) => x.id !== c.id); renderClients();
+  f.querySelector('[data-act="del"]')?.addEventListener('click', () => deleteClient(root, c));
+}
+
+async function deleteClient(root, c) {
+  const n = (c.properties || []).length;
+  const yes = await confirmDialog({
+    title: `Изтриване на „${c.name}“?`,
+    text: `Клиентът${n ? ` и ${n === 1 ? 'неговият 1 обект' : `всички ${n} обекта`}` : ''} ще бъдат изтрити завинаги. Ако клиентът просто е спрял, по-добре сменете статуса на „Приключил“.`,
+    ok: 'Изтрий клиента',
   });
+  if (!yes) return;
+  const { data, error } = await supabase.from('clients').delete().eq('id', c.id).select('id');
+  if (error) return clAlert(root, 'error', authMessage(error));
+  if (!data?.length) return clAlert(root, 'error', 'Клиентът не беше изтрит — само собственик може да изтрива клиенти.');
+  $('dlg-client').close(); toast('Клиентът е изтрит.');
+  clients = clients.filter((x) => x.id !== c.id); renderClients();
 }
 
 async function loadClientUsers(root, c) {
@@ -3000,8 +3043,11 @@ async function openProperty(c, id) {
   $('pr-root').innerHTML = `
     <h2>${id ? esc(p.name) : 'Нов обект'}</h2>
     <p class="lead">${esc(c.name)}</p>
-    ${id && p.address ? `<div class="sf-quick"><a class="sq-btn" href="${mapsHref(p.address)}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">${ic('map')}</span></a>
-      ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>` : ''}</div>` : ''}
+    ${id ? `<div class="sf-quick">
+      ${p.address ? `<a class="sq-btn" href="${mapsHref(p.address)}" target="_blank" rel="noopener" title="Карта" aria-label="Отвори в Google Maps"><span class="emo">${ic('map')}</span></a>` : ''}
+      ${p.contact_phone ? `<a class="sq-btn" href="${telHref(p.contact_phone)}" title="Обаждане до контакта" aria-label="Обаждане"><span class="emo">${ic('phone')}</span></a>` : ''}
+      ${manage ? `<button type="button" class="sq-btn sq-del" data-act="del-prop" title="Изтрий обекта" aria-label="Изтрий обекта"><span class="emo">${ic('trash')}</span></button>` : ''}
+    </div>` : ''}
     <div class="sf-alert" role="alert"></div>
     <form class="pr-form" novalidate>
       <div class="field"><label>Име на обекта</label><input class="input" name="name" value="${v('name')}" autocomplete="off" placeholder="напр. Офис Лозенец, ет. 3"></div>
@@ -3042,7 +3088,7 @@ async function openProperty(c, id) {
         <div class="ev-people">${people.length ? people.map((u) => `<label><input type="checkbox" name="staff" value="${u.id}" ${sel.has(u.id) ? 'checked' : ''}><span class="avatar">${esc(initials(u))}</span><span>${esc(fullName(u) || u.email)}${u.is_dev ? ' (тест)' : ''}<small>${esc(ROLE_LABELS[u.role])}</small></span></label>`).join('') : '<div class="hint">Няма хигиенисти.</div>'}</div></div>
       <div class="field"><label>Бележки</label><textarea class="input" name="notes" rows="2">${v('notes')}</textarea></div>
       ${manage ? `<div class="actions"><button class="btn" type="submit"><span class="label">${id ? 'Запази' : 'Създай обект'}</span></button>
-        ${id ? '<button class="btn ghost-danger" type="button" data-act="del"><span class="label">Изтрий обекта</span></button>' : ''}</div>` : ''}
+        ${id ? `<button class="btn ghost-danger" type="button" data-act="del"><span class="label">${ic('trash')} Изтрий обекта</span></button>` : ''}</div>` : ''}
     </form>`;
   const root = $('pr-root'), f = root.querySelector('.pr-form');
   if (!manage) f.querySelectorAll('input, select, textarea').forEach((x) => { x.disabled = true; });
@@ -3071,13 +3117,16 @@ async function openProperty(c, id) {
     } catch (err) { clAlert(root, 'error', authMessage(err)); }
     finally { busy(btn, false); }
   });
-  const del = f.querySelector('[data-act="del"]');
-  del?.addEventListener('click', async () => {
-    if (del.dataset.armed !== '1') { del.dataset.armed = '1'; del.className = 'btn danger'; del.querySelector('.label').textContent = 'Потвърди изтриване'; clAlert(root, 'info', 'Обектът ще бъде изтрит завинаги. Ако само е спрял, сменете статуса.'); return; }
-    const { error } = await supabase.from('properties').delete().eq('id', prRow.id);
+  const delProp = async () => {
+    const yes = await confirmDialog({ title: `Изтриване на „${prRow.name}“?`, text: 'Обектът ще бъде изтрит завинаги. Ако само е спрял, по-добре сменете статуса на „Приключил“.', ok: 'Изтрий обекта' });
+    if (!yes) return;
+    const { data, error } = await supabase.from('properties').delete().eq('id', prRow.id).select('id');
     if (error) return clAlert(root, 'error', authMessage(error));
+    if (!data?.length) return clAlert(root, 'error', 'Обектът не беше изтрит — нямате права.');
     $('dlg-prop').close(); toast('Обектът е изтрит.'); refreshClient(c.id, 'props');
-  });
+  };
+  f.querySelector('[data-act="del"]')?.addEventListener('click', delProp);
+  root.querySelector('[data-act="del-prop"]')?.addEventListener('click', delProp);
   $('dlg-prop').showModal();
 }
 
