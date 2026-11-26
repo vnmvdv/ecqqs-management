@@ -639,6 +639,20 @@
   .stat.warn .val { color: var(--warn); }
   .stat.ok { border-color: var(--ok); background: var(--ok-bg); }
   .stat.ok .val { color: var(--ok); }
+  .stat.gain .val { color: var(--ok); }
+  .stat.loss { border-color: var(--accent); }
+  .stat.loss .val { color: var(--accent); }
+  .stat .val small.psub { display: block; font-size: 11px; font-weight: 500; color: var(--muted); margin-top: 2px; font-family: inherit; }
+  .pbreak { border: 1px solid var(--rule); background: var(--paper); padding: 10px 12px; margin-top: 10px; font-size: 13px; }
+  .pbreak .pb-h { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 6px; }
+  .pb-row { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px dotted var(--rule); }
+  .pb-row b { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pb-row.sum { border-top: 1px solid var(--ink); font-weight: 600; }
+  .pb-row.tot { border-top: 2px solid var(--ink); border-bottom: 0; font-size: 15px; }
+  .pb-row.tot b { color: var(--ok); }
+  .pb-row.tot.neg b { color: var(--accent); }
+  .pb-row.sm { border: 0; color: var(--muted); font-size: 12px; }
+  .pb-warn { margin-top: 6px; color: var(--warn); font-size: 12px; }
   .sf-stats .empty, .empty.sm { padding: 14px; font-size: 13px; grid-column: 1 / -1; }
   .mini-list { display: grid; gap: 6px; }
   .mini { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border: 1px solid var(--rule); border-radius: var(--radius); }
@@ -1137,6 +1151,7 @@
   .snum { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 6px; font-family: var(--font-ui); font-size: 11.5px; color: var(--ink-2); white-space: normal; }
   .snum b { font-family: var(--font-mono); color: var(--ink); }
   .snum .due, .snum .due b { color: var(--accent); }
+  .snum .gain b { color: var(--ok); }
 </style>
 </head>
 <body>
@@ -1291,7 +1306,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.27 — брой почиствания</div>
+      <div class="version">v0.28 — печалба от хигиенист</div>
     </div>
   </aside>
 
@@ -3054,7 +3069,7 @@ function leaveBarHTML(rev, total) {
 }
 
 /* ---------- Client economics (same model as the live CRM) ---------- */
-const BIZ = { wage: 13, overheadPerHour: 270 / 60, matPerHour: 1 };      // € per working hour
+const BIZ = { wage: 13, overheadPerHour: 270 / 60, matPerHour: 1, corpTax: 10 };   // € per working hour, corp. tax %
 const COST_PER_HOUR = BIZ.wage + BIZ.overheadPerHour + BIZ.matPerHour;   // 18.50 €
 function health(m) {
   if (m < 0) return { k: 'loss', label: 'Губещо' };
@@ -3927,14 +3942,15 @@ let staffNums = {};   // user_id -> staffCalc result
 async function loadStaffNumbers() {
   try { await waitFor(() => window.rrule); } catch { return; }
   const [{ data: evs }, { data: pays }] = await Promise.all([
-    supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,event_assignees(user_id)'),
+    supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,property_id,event_assignees(user_id)'),
     supabase.from('staff_payments').select('user_id,amount,paid_on'),
   ]);
+  const props = canManageStaff() ? await loadPropPrices() : null;
   const evBy = {}, payBy = {};
   for (const ev of evs || []) for (const a of ev.event_assignees || []) (evBy[a.user_id] ||= []).push(ev);
   for (const x of pays || []) (payBy[x.user_id] ||= []).push(x);
   staffNums = {};
-  for (const p of staff) staffNums[p.id] = staffCalc(evBy[p.id] || [], payBy[p.id] || [], Number(p.d?.hourly_rate ?? 13));
+  for (const p of staff) staffNums[p.id] = staffCalc(evBy[p.id] || [], payBy[p.id] || [], Number(p.d?.hourly_rate ?? 13), props);
   renderStaff();
 }
 function renderStaff() {
@@ -3955,7 +3971,7 @@ function renderStaff() {
         <div class="sub">${esc(ROLE_LABELS[p.role])}${p.phone ? ' · ' + esc(p.phone) : ''}${p.d.district ? ' · ' + esc(p.d.district) : ''}</div>
         ${(() => { const n = staffNums[p.id]; if (!n || (!n.cAll && !n.cMonthPlan && !n.cNext && !n.paidAll)) return '';
           const mon = monthName(n.mStart);
-          return `<div class="snum"><span><b>${n.cMonth}/${n.cMonthPlan}</b> почиств. ${esc(mon)}</span><span><b>${hrs(n.monthPlan)}</b> прогноза</span>${n.cNext ? `<span><b>${n.cNext}</b> следв. месец</span>` : ''}${n.owed > 0.5 ? `<span class="due"><b>${eur(n.owed)}</b> за изплащане</span>` : ''}</div>`; })()}
+          return `<div class="snum"><span><b>${n.cMonth}/${n.cMonthPlan}</b> почиств. ${esc(mon)}</span><span><b>${hrs(n.monthPlan)}</b> прогноза</span>${n.cNext ? `<span><b>${n.cNext}</b> следв. месец</span>` : ''}${n.profit && n.profit.monthPlan.n ? `<span class="${n.profit.monthPlan.net < 0 ? 'due' : 'gain'}"><b>${n.profit.monthPlan.net < 0 ? '' : '+'}${eur(n.profit.monthPlan.net)}</b> печалба ${esc(mon)}</span>` : ''}${n.owed > 0.5 ? `<span class="due"><b>${eur(n.owed)}</b> за изплащане</span>` : ''}</div>`; })()}
       </div>
       <div class="tags">
         ${p.id === currentUserId ? '<span class="badge you">Вие</span>' : ''}
@@ -4001,7 +4017,7 @@ function expandEvents(rows, until) {
   for (const r of rows) {
     if (r.all_day) continue;                       // all-day items aren't work hours
     const s = new Date(r.start_at), e = new Date(r.end_at), dur = e - s;
-    if (!r.recurrence) { out.push({ s, e }); continue; }
+    if (!r.recurrence) { out.push({ s, e, r }); continue; }
     const rec = r.recurrence;
     const opts = { freq: { daily: rrule.RRule.DAILY, weekly: rrule.RRule.WEEKLY, monthly: rrule.RRule.MONTHLY, yearly: rrule.RRule.YEARLY }[rec.freq],
       interval: rec.interval || 1, dtstart: toFake(s) };
@@ -4013,25 +4029,35 @@ function expandEvents(rows, until) {
     for (const occ of new rrule.RRule(opts).all()) {
       const st = fromFake(occ);
       if (ex.has(localISO(st))) continue;
-      out.push({ s: st, e: new Date(st.getTime() + dur) });
+      out.push({ s: st, e: new Date(st.getTime() + dur), r });
     }
   }
   return out;
 }
 
 async function staffNumbers(userId, rate) {
-  const now = new Date();
-  const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const nStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  const nEnd = new Date(now.getFullYear(), now.getMonth() + 2, 1);
-  const [{ data: evs, error: e1 }, { data: pays, error: e2 }] = await Promise.all([
-    supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,event_assignees!inner(user_id)').eq('event_assignees.user_id', userId),
+  const wantProfit = canManageStaff();
+  const [{ data: evs, error: e1 }, { data: pays, error: e2 }, props] = await Promise.all([
+    wantProfit
+      ? supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,property_id,event_assignees(user_id)')
+      : supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,property_id,event_assignees!inner(user_id)').eq('event_assignees.user_id', userId),
     supabase.from('staff_payments').select('amount,paid_on').eq('user_id', userId),
+    wantProfit ? loadPropPrices() : null,
   ]);
   if (e1 || e2) throw (e1 || e2);
-  return staffCalc(evs || [], pays || [], rate);
+  const mine = (evs || []).filter((ev) => (ev.event_assignees || []).some((a) => a.user_id === userId));
+  return staffCalc(mine, pays || [], rate, props);
 }
-function staffCalc(evs, pays, rate) {
+// property_id -> property (price, model, schedule) — only roles that may see client prices
+async function loadPropPrices() {
+  const { data, error } = await supabase.from('properties').select('id,price,price_model,schedule,status');
+  if (error) return null;
+  return Object.fromEntries((data || []).map((p) => [p.id, p]));
+}
+// What one block of work earns the company: the cleaner's share of the visit price minus their wage, overhead and materials
+const NET_K = 1 - BIZ.corpTax / 100;
+const afterTax = (pre) => (pre > 0 ? pre * NET_K : pre);
+function staffCalc(evs, pays, rate, props) {
   const now = new Date();
   const mStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const nStart = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -4040,10 +4066,24 @@ function staffCalc(evs, pays, rate) {
   const h = (b) => (b.e - b.s) / 3600000;
   let all = 0, month = 0, monthPlan = 0, nextPlan = 0;
   let cAll = 0, cMonth = 0, cMonthPlan = 0, cNext = 0;          // number of cleanings
+  const P = () => ({ rev: 0, wage: 0, over: 0, mat: 0, h: 0, n: 0, unpriced: 0 });
+  const pr = props ? { all: P(), month: P(), monthPlan: P(), nextPlan: P() } : null;
+  const addP = (k, b) => {
+    const t = pr[k], hh = h(b), prop = b.r?.property_id ? props[b.r.property_id] : null;
+    const pv = prop ? perVisitOf(prop) : null;
+    if (!pv) { if (prop) t.unpriced++; return; }                  // not a paid cleaning (or no price yet)
+    const people = Math.max(1, (b.r.event_assignees || []).length);
+    t.rev += pv / people; t.wage += hh * rate; t.over += hh * BIZ.overheadPerHour; t.mat += hh * BIZ.matPerHour; t.h += hh; t.n++;
+  };
   for (const b of blocks) {
-    if (b.e <= now) { all += h(b); cAll++; }
-    if (b.s >= mStart && b.s < nStart) { monthPlan += h(b); cMonthPlan++; if (b.e <= now) { month += h(b); cMonth++; } }
-    if (b.s >= nStart && b.s < nEnd) { nextPlan += h(b); cNext++; }
+    const done = b.e <= now, inM = b.s >= mStart && b.s < nStart, inN = b.s >= nStart && b.s < nEnd;
+    if (done) { all += h(b); cAll++; }
+    if (inM) { monthPlan += h(b); cMonthPlan++; if (done) { month += h(b); cMonth++; } }
+    if (inN) { nextPlan += h(b); cNext++; }
+    if (pr) { if (done) addP('all', b); if (inM) { addP('monthPlan', b); if (done) addP('month', b); } if (inN) addP('nextPlan', b); }
+  }
+  if (pr) for (const t of Object.values(pr)) {
+    t.pre = t.rev - t.wage - t.over - t.mat; t.tax = t.pre > 0 ? t.pre * BIZ.corpTax / 100 : 0; t.net = t.pre - t.tax;
   }
   let paidAll = 0, paidMonth = 0;
   for (const p of pays) {
@@ -4051,7 +4091,7 @@ function staffCalc(evs, pays, rate) {
     if (fromLocal(p.paid_on) >= mStart && fromLocal(p.paid_on) < nStart) paidMonth += amt;
   }
   return { all, month, monthPlan, nextPlan, cAll, cMonth, cMonthPlan, cNext, paidAll, paidMonth, owed: all * rate - paidAll,
-    payMonth: monthPlan * rate, payNext: nextPlan * rate, mStart, nStart };
+    payMonth: monthPlan * rate, payNext: nextPlan * rate, mStart, nStart, profit: pr };
 }
 
 function staffFileHTML(p, perms) {
@@ -4103,6 +4143,10 @@ function staffFileHTML(p, perms) {
       <div class="sf-group">Пари</div>
       <div class="sf-stats" data-k="money"><div class="empty">Изчисляване…</div></div>
       <p class="note">Часовете идват от събитията в календара, на които е назначен (минали = изработени, бъдещи = прогноза). Сумите = часове × ставката.</p>
+      ${perms.profit ? `<div class="sf-group">Печалба за фирмата</div>
+      <div class="sf-stats" data-k="profit"><div class="empty">Изчисляване…</div></div>
+      <div data-k="pbreak"></div>
+      <p class="note">За всяко почистване: цената от клиента (разделена между хигиенистите на посещението) − заплатата му (часове × ставка) − постоянни разходи ${eur(BIZ.overheadPerHour)}/ч − материали ${eur(BIZ.matPerHour)}/ч − корпоративен данък ${BIZ.corpTax}%. Броят се само събития, свързани с обект с цена.</p>` : ''}
       <div class="sf-group">${p.role === 'manager' || p.role === 'owner' ? 'Екип' : 'Мениджър'}</div>
       <div data-k="team"><div class="empty">—</div></div>
       <div class="sf-group">Обекти</div>
@@ -4199,8 +4243,28 @@ function mountStaffFile(root, p, perms) {
         tile('За изплащане сега', eur(Math.max(0, n.owed)), n.owed > 0.004 ? 'warn' : '') +
         tile(`Прогноза заплата — ${m}`, eur(n.payMonth)) + tile(`Прогноза заплата — ${nx}`, eur(n.payNext)) +
         (n.owed < -0.004 ? tile('Аванс (надплатено)', eur(-n.owed), 'ok') : '');
+      if (perms.profit && n.profit) {
+        const P = n.profit;
+        const ptile = (label, t) => tile(label, t.n ? `${t.net < 0 ? '' : '+'}${eur(t.net)}<small class="psub">от ${eur(t.rev)} приход · ${t.n} почиств.</small>` : '<span class="dim">—</span>',
+          t.n ? (t.net < 0 ? 'loss' : 'gain') : '');
+        q('[data-k="profit"]').innerHTML =
+          ptile('Донесена — общо', P.all) + ptile(`Реално — ${m}`, P.month) +
+          ptile(`Прогноза — ${m}`, P.monthPlan) + ptile(`Прогноза — ${nx}`, P.nextPlan);
+        const t = P.monthPlan.n ? P.monthPlan : P.nextPlan, when = P.monthPlan.n ? m : nx;
+        const row = (l, v, cls = '') => `<div class="pb-row ${cls}"><span>${l}</span><b>${v}</b></div>`;
+        q('[data-k="pbreak"]').innerHTML = t.n ? `<div class="pbreak"><div class="pb-h">Как се получава — прогноза ${esc(when)}</div>
+          ${row(`Приход от клиенти (${t.n} почиств.)`, eur(t.rev))}
+          ${row(`Заплата (${hrs(t.h)} × ${eur(rate)})`, '−' + eur(t.wage))}
+          ${row(`Постоянни разходи (${hrs(t.h)} × ${eur(BIZ.overheadPerHour)})`, '−' + eur(t.over))}
+          ${row(`Материали (${hrs(t.h)} × ${eur(BIZ.matPerHour)})`, '−' + eur(t.mat))}
+          ${row('Печалба преди данък', eur(t.pre), 'sum')}
+          ${row(`Корпоративен данък ${BIZ.corpTax}%`, '−' + eur(t.tax))}
+          ${row('Чиста печалба', eur(t.net), 'tot ' + (t.net < 0 ? 'neg' : ''))}
+          ${row('На изработен час', eur(t.h ? t.net / t.h : 0) + ' / ч', 'sm')}
+          ${t.unpriced ? `<div class="pb-warn">${t.unpriced} почиств. са към обект без цена и не са включени.</div>` : ''}</div>` : '';
+      }
     } catch (err) {
-      q('[data-k="count"]').innerHTML = q('[data-k="hours"]').innerHTML = q('[data-k="money"]').innerHTML = `<div class="empty">Неуспешно изчисление. ${esc(authMessage(err))}</div>`;
+      root.querySelectorAll('[data-k="count"],[data-k="hours"],[data-k="money"],[data-k="profit"]').forEach((x) => { x.innerHTML = `<div class="empty">Неуспешно изчисление. ${esc(authMessage(err))}</div>`; });
     }
   })();
 
@@ -4377,7 +4441,7 @@ function mountStaffFile(root, p, perms) {
 function staffPerms(p) {
   const self = p.id === currentUserId;
   const edit = canEditStaff(p);
-  return { self: self && !canManageStaff(), edit, rate: isOwner(), pay: edit, avail: edit || self };
+  return { self: self && !canManageStaff(), edit, rate: isOwner(), pay: edit, avail: edit || self, profit: canManageStaff() };
 }
 
 function openStaff(id) {
