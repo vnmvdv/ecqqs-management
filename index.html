@@ -965,6 +965,18 @@
   .sch-linked { display: flex; gap: 8px; align-items: center; font-family: var(--font-ui); font-size: 13px; font-weight: 600; color: var(--ok); margin-bottom: 6px; }
   .sch-cal .actions { margin-top: 8px; }
   .link .ic { width: 15px; height: 15px; }
+
+  /* schedule: frequency picker + next dates */
+  .sch-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .opt { font-family: var(--font-ui); font-size: 12.5px; padding: 8px 11px; border: 1px solid var(--ink); background: transparent; color: var(--ink); cursor: pointer; line-height: 1.2; min-height: 36px; }
+  .opt:hover { background: var(--paper-2); }
+  .opt.on, .opt.on:hover { background: var(--ink); color: var(--paper); }
+  .sch-every { display: grid; grid-template-columns: auto 72px 1fr; gap: 10px; align-items: end; font-family: var(--font-ui); font-size: 14px; }
+  .sch-every span { padding-bottom: 12px; }
+  .sch-every .input[type="number"] { text-align: center; }
+  .sch-next { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; align-items: center; }
+  .sch-next .lbl { width: 100%; font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .sch-next .nd { font-family: var(--font-mono); font-size: 11.5px; padding: 3px 7px; border: 1px solid var(--ink); background: var(--paper); }
 </style>
 </head>
 <body>
@@ -1119,7 +1131,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.21 — график на обекти</div>
+      <div class="version">v0.22 — гъвкав интервал</div>
     </div>
   </aside>
 
@@ -3061,15 +3073,33 @@ function schPerMonth(s) {
   if (s.freq === 'weekly') return (s.byweekday || []).length * 4.345 / iv;
   return 1 / iv;
 }
+const UNIT_WORD = { daily: ['ден', 'дни'], weekly: ['седмица', 'седмици'], monthly: ['месец', 'месеца'] };
+function everyText(freq, n) {
+  n = Math.max(1, Number(n) || 1);
+  if (n === 1) return { daily: 'Всеки ден', weekly: 'Всяка седмица', monthly: 'Всеки месец' }[freq];
+  return `На всеки ${n} ${UNIT_WORD[freq][1]}`;
+}
 function schText(s) {
   if (!s) return '';
-  const iv = Math.max(1, Number(s.interval) || 1);
-  const ord = iv === 1 ? '' : iv === 2 ? ' (през седмица)' : ` (на всеки ${iv})`;
-  let t;
-  if (s.freq === 'daily') t = iv === 1 ? 'Всеки ден' : `На всеки ${iv} дни`;
-  else if (s.freq === 'weekly') t = (s.byweekday || []).map((d) => WD_SHORT[d]).join(', ') + (iv === 1 ? ' всяка седмица' : ord);
-  else t = `Всеки${iv === 1 ? '' : ` ${iv}-ти`} месец на ${s.start_date ? fromLocal(s.start_date).getDate() : '?'}-о число`;
+  let t = everyText(s.freq, s.interval);
+  if (s.freq === 'weekly' && (s.byweekday || []).length) t += ' — ' + s.byweekday.map((d) => WD_SHORT[d]).join(', ');
+  if (s.freq === 'monthly' && s.start_date) t += ` на ${fromLocal(s.start_date).getDate()}-о число`;
   return `${t}, ${s.start_time}–${s.end_time}`;
+}
+// Next cleaning dates for the preview (same rule the calendar uses)
+function schNextDates(s, count = 6) {
+  if (!window.rrule || !s?.start_date) return [];
+  const R = rrule.RRule;
+  const st = fromLocal(s.start_date, s.start_time || '00:00');
+  const fake = (d) => new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes()));
+  const opts = { freq: { daily: R.DAILY, weekly: R.WEEKLY, monthly: R.MONTHLY }[s.freq], interval: Math.max(1, Number(s.interval) || 1), dtstart: fake(st) };
+  if (s.freq === 'weekly' && s.byweekday?.length) opts.byweekday = s.byweekday.map((d) => [R.MO, R.TU, R.WE, R.TH, R.FR, R.SA, R.SU][WD_KEYS.indexOf(d)]);
+  if (s.until) opts.until = fake(fromLocal(s.until, '23:59'));
+  const from = fake(new Date(Math.max(Date.now(), st.getTime()) - 60000));
+  const out = []; const rule = new R(opts);
+  let d = rule.after(from, true);
+  while (d && out.length < count) { out.push(new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes())); d = rule.after(d, false); }
+  return out;
 }
 function schEventPayload(s, prop, client) {
   const start = fromLocal(s.start_date, s.start_time);
@@ -3203,11 +3233,16 @@ async function openProperty(c, id) {
       <div class="sf-group">График на почистванията</div>
       <label class="check"><input type="checkbox" name="sch_on" ${s ? 'checked' : ''}><span class="box"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3.2 3L13 4.5"/></svg></span>Редовен график</label>
       <div class="sch" ${s ? '' : 'hidden'}>
-        <div class="two">
-          <div class="field"><label>Колко често</label><select class="input" name="sch_freq">${Object.entries(SCH_FREQ).map(([k, l]) => `<option value="${k}" ${sd.freq === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-          <div class="field"><label>Повторение</label><select class="input" name="sch_interval">${[1, 2, 3, 4].map((n) => `<option value="${n}" ${Number(sd.interval || 1) === n ? 'selected' : ''}>${n === 1 ? 'всеки път' : n === 2 ? 'през едно' : 'на всеки ' + n}</option>`).join('')}</select></div>
+        <div class="field"><label>Колко често</label>
+          <div class="sch-quick">${[['daily', 1], ['daily', 3], ['weekly', 1], ['daily', 10], ['weekly', 2], ['weekly', 3], ['monthly', 1]].map(([fq, n]) =>
+            `<button type="button" class="opt" data-fq="${fq}" data-n="${n}">${everyText(fq, n)}</button>`).join('')}</div>
+          <div class="sch-every">
+            <span>На всеки</span>
+            <input class="input" name="sch_interval" type="number" min="1" max="365" step="1" inputmode="numeric" value="${Number(sd.interval || 1)}" aria-label="Брой">
+            <select class="input" name="sch_freq" aria-label="Единица">${Object.keys(UNIT_WORD).map((k) => `<option value="${k}" ${sd.freq === k ? 'selected' : ''}>${UNIT_WORD[k][Number(sd.interval || 1) === 1 ? 0 : 1]}</option>`).join('')}</select>
+          </div>
         </div>
-        <div class="field sch-days" ${sd.freq === 'weekly' ? '' : 'hidden'}><label>Дни</label>
+        <div class="field sch-days" ${sd.freq === 'weekly' ? '' : 'hidden'}><label>В кои дни (по избор — иначе денят на началната дата)</label>
           <div class="ev-days">${WD_KEYS.map((d) => `<label><input type="checkbox" name="sch_day" value="${d}" ${(sd.byweekday || []).includes(d) ? 'checked' : ''}><span>${WD_SHORT[d]}</span></label>`).join('')}</div>
         </div>
         <div class="two">
@@ -3235,13 +3270,15 @@ async function openProperty(c, id) {
   // --- schedule UI
   const readSchedule = () => {
     if (!f.sch_on.checked) return null;
-    return { freq: f.sch_freq.value, interval: Number(f.sch_interval.value) || 1,
-      byweekday: f.sch_freq.value === 'weekly' ? [...f.querySelectorAll('input[name="sch_day"]:checked')].map((x) => x.value) : [],
+    const n = Math.min(365, Math.max(1, Math.round(Number(f.sch_interval.value) || 1)));
+    let days = f.sch_freq.value === 'weekly' ? [...f.querySelectorAll('input[name="sch_day"]:checked')].map((x) => x.value) : [];
+    if (f.sch_freq.value === 'weekly' && !days.length && f.sch_start_date.value) days = [WD_KEYS[(fromLocal(f.sch_start_date.value).getDay() + 6) % 7]];
+    return { freq: f.sch_freq.value, interval: n, byweekday: days,
       start_time: f.sch_start_time.value, end_time: f.sch_end_time.value, start_date: f.sch_start_date.value, until: f.sch_until.value || null };
   };
   const schError = (x) => {
     if (!x) return null;
-    if (x.freq === 'weekly' && !x.byweekday.length) return 'Изберете поне един ден за графика.';
+    if (x.freq === 'weekly' && !x.byweekday.length) return 'Изберете начална дата или поне един ден от седмицата.';
     if (!x.start_time || !x.end_time) return 'Изберете часове за графика.';
     if (x.start_time === x.end_time) return 'Началният и крайният час на графика са еднакви.';
     if (!x.start_date) return 'Изберете от коя дата започва графикът.';
@@ -3253,6 +3290,9 @@ async function openProperty(c, id) {
     const x = readSchedule();
     root.querySelector('.sch').hidden = !f.sch_on.checked;
     root.querySelector('.sch-days').hidden = f.sch_freq.value !== 'weekly';
+    const nNow = Math.max(1, Number(f.sch_interval.value) || 1);
+    [...f.sch_freq.options].forEach((o) => { o.textContent = UNIT_WORD[o.value][nNow === 1 ? 0 : 1]; });
+    root.querySelectorAll('.sch-quick .opt').forEach((b) => b.classList.toggle('on', b.dataset.fq === f.sch_freq.value && Number(b.dataset.n) === nNow));
     const sumBox = root.querySelector('[data-k="schsum"]'), calBox = root.querySelector('[data-k="schcal"]');
     if (!x) { calBox.innerHTML = linked() && manage ? `<div class="alert info">${ICONS.info}<span>Графикът е изключен. При запазване бъдещите почиствания ще бъдат махнати от календара (минали остават).</span></div>` : ''; return; }
     const err = schError(x);
@@ -3260,7 +3300,9 @@ async function openProperty(c, id) {
     else {
       const per = schPerMonth(x), h = schDurH(x), price = Number(String(f.price.value).replace(',', '.')) || 0;
       const rev = f.price_model.value === 'visit' ? per * price : f.price_model.value === 'hour' ? per * h * price : price;
-      sumBox.innerHTML = `${ic('repeat')} <span>${esc(schText(x))}<br><b>≈ ${Math.round(per * 10) / 10}</b> почиствания / месец · <b>≈ ${Math.round(per * h * 10) / 10} ч</b> / месец${price ? ` · <b>≈ ${eur(rev)}</b> / месец` : ''}</span>`;
+      const next = schNextDates(x, 6);
+      sumBox.innerHTML = `${ic('repeat')} <span>${esc(schText(x))}<br><b>≈ ${Math.round(per * 10) / 10}</b> почиствания / месец · <b>≈ ${Math.round(per * h * 10) / 10} ч</b> / месец${price ? ` · <b>≈ ${eur(rev)}</b> / месец` : ''}
+        ${next.length ? `<span class="sch-next"><span class="lbl">Следващи почиствания</span>${next.map((d) => `<span class="nd">${d.toLocaleDateString('bg-BG', { weekday: 'short', day: 'numeric', month: 'short' })}</span>`).join('')}</span>` : '<span class="sch-next muted">Няма бъдещи почиствания в този период.</span>'}</span>`;
     }
     if (!manage) { calBox.innerHTML = linked() ? `<div class="sch-linked">${ic('check')} В календара</div>` : ''; return; }
     calBox.innerHTML = linked()
@@ -3277,6 +3319,12 @@ async function openProperty(c, id) {
     });
   };
   ['sch_on', 'sch_freq', 'sch_interval', 'sch_start_time', 'sch_end_time', 'sch_start_date', 'sch_until', 'price', 'price_model'].forEach((n) => f[n]?.addEventListener('change', renderSch));
+  f.sch_interval.addEventListener('input', renderSch);
+  root.querySelectorAll('.sch-quick .opt').forEach((b) => b.addEventListener('click', () => {
+    f.sch_freq.value = b.dataset.fq; f.sch_interval.value = b.dataset.n;
+    if (b.dataset.fq !== 'weekly') f.querySelectorAll('input[name="sch_day"]').forEach((x) => { x.checked = false; });
+    renderSch();
+  }));
   f.querySelectorAll('input[name="sch_day"]').forEach((x) => x.addEventListener('change', renderSch));
   f.contract_start.addEventListener('change', () => { if (!prRow?.schedule && !f.sch_start_date.dataset.touched) f.sch_start_date.value = f.contract_start.value || ymd(new Date()); renderSch(); });
   f.contract_end.addEventListener('change', () => { if (!prRow?.schedule && !f.sch_until.dataset.touched) f.sch_until.value = f.contract_end.value; renderSch(); });
