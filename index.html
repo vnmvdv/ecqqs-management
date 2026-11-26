@@ -1078,9 +1078,9 @@
   .fgrid .fcard { margin-top: 0; }
   .fchart { width: 100%; height: auto; display: block; }
   .fchart .g { stroke: var(--rule); stroke-width: 1; } .fchart .t { font-size: 10.5px; fill: var(--muted); font-family: var(--font-ui); text-transform: capitalize; }
-  .fchart .t.on { fill: var(--ink); font-weight: 700; } .fchart .rv { fill: var(--ink); } .fchart .cs { fill: #8C8C86; } .fchart .sel { fill: var(--ink); opacity: .05; }
+  .fchart .t.on { fill: var(--ink); font-weight: 700; } .fchart .rv { fill: #2563EB; } .fchart .cs { fill: #F97316; } .fchart .pf { fill: #16A34A; } .fchart .pf.negv { fill: #DC2626; } .fchart .z { stroke: var(--ink); stroke-width: 1.2; } .fchart .sel { fill: var(--ink); opacity: .05; }
   .flegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin-bottom: 6px; font-family: var(--font-ui); }
-  .flegend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; } .flegend i.rv { background: var(--ink); } .flegend i.cs { background: #8C8C86; }
+  .flegend i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; } .flegend i.rv { background: #2563EB; } .flegend i.cs { background: #F97316; } .flegend i.pf { background: #16A34A; }
   .pbreak.flat { border: 0; padding: 0; margin: 0; background: none; }
   .pb-row em { font-style: normal; color: var(--muted); font-size: 11.5px; }
   .pb-row.est span { color: var(--muted); }
@@ -1113,6 +1113,18 @@
   .drow.tot { font-weight: 700; border-top: 2px solid var(--ink); border-bottom: 0; font-size: 14.5px; } .drow.tot .dv { color: var(--ok); }
   .drow.neg .dv { color: var(--accent); } .drow.neg .db i { background: var(--accent); }
   .f-kind { align-self: center; }
+  .goal-mode { margin-bottom: 12px; }
+  .goal-adv { margin: 4px 0 10px; } .goal-adv summary { cursor: pointer; font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .gprog { margin: 12px 0 4px; } .gp-top { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 5px; }
+  .gp-bar { height: 14px; border: 1px solid var(--ink); background: var(--paper-2); } .gp-bar i { display: block; height: 100%; background: #16A34A; }
+  .gprog small { color: var(--muted); font-size: 12px; }
+  .gbars { display: flex; align-items: flex-end; gap: 6px; height: 190px; padding-top: 6px; }
+  .gbar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; min-width: 0; }
+  .gstack { flex: 1; width: 100%; max-width: 42px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .gstack i { display: block; width: 100%; } .gstack i.old { background: #2563EB; } .gstack i.new { background: #16A34A; }
+  .gbar small { font-size: 10.5px; color: var(--muted); } .gbar b { font-size: 12px; font-family: var(--font-mono); }
+  .ftbl tr.on td { background: var(--ok-bg); font-weight: 600; }
+
   .stat.two .vv { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px 10px; margin-top: 6px; }
   .stat.two .vv small, .ov2 small { display: block; font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-family: var(--font-ui); font-weight: 600; }
   .stat.two .vv b { font-family: var(--font-mono); font-size: 16px; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -1391,7 +1403,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.37 — общо прогноза</div>
+      <div class="version">v0.38 — цели + цветна графика</div>
     </div>
   </aside>
 
@@ -1470,12 +1482,14 @@
         </div>
         <span class="badge f-kind" id="f-kind" hidden></span>
       </div>
-      <div class="sf-tabs f-tabs" role="tablist" style="grid-template-columns:1fr 1fr">
+      <div class="sf-tabs f-tabs" role="tablist" style="grid-template-columns:1fr 1fr 1fr">
         <button type="button" role="tab" class="sf-tab active" data-ftab="main" aria-selected="true">Обобщение</button>
         <button type="button" role="tab" class="sf-tab" data-ftab="exp" aria-selected="false">Разходи</button>
+        <button type="button" role="tab" class="sf-tab" data-ftab="goal" aria-selected="false">Цели</button>
       </div>
       <div id="f-body"></div>
       <div id="f-exp" hidden></div>
+      <div id="f-goal" hidden></div>
     </section>
 
     <!-- Users -->
@@ -4243,6 +4257,7 @@ async function loadFinances() {
   try {
     await fetchFinData();
     renderFinances();
+    if (finTab === 'goal') { await loadGoal(); renderGoal(); }
   } catch (e) {
     box.innerHTML = `<div class="empty">Финансите не могат да се заредят. ${esc(authMessage(e))}</div>`;
   }
@@ -4309,25 +4324,272 @@ function finCalc(ym, src = 'done') {
 }
 
 function finChart(series) {
-  const W = 720, H = 230, L = 46, R = 8, T = 12, B = 26;
-  const mx0 = Math.max(1, ...series.map((d) => Math.max(d.rev, d.costs))) * 1.08;
-  const p = Math.pow(10, Math.floor(Math.log10(mx0))), f = mx0 / p, mx = (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
-  const y = (v) => T + (H - T - B) * (1 - Math.max(0, v) / mx), band = (W - L - R) / series.length, bw = Math.min(22, band * .3);
-  let s = `<svg viewBox="0 0 ${W} ${H}" class="fchart" role="img" aria-label="Приход и разходи по месеци">`;
-  for (let i = 0; i <= 4; i++) { const v = mx / 4 * i, yy = y(v); s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g"/><text x="${L - 7}" y="${yy + 3.5}" text-anchor="end" class="t">${Math.round(v).toLocaleString('bg-BG')}</text>`; }
+  const W = 720, H = 240, L = 50, R = 8, T = 12, B = 26;
+  const vals = series.flatMap((d) => [d.rev, d.costs, d.net]);
+  const hi0 = Math.max(1, ...vals) * 1.08, lo0 = Math.min(0, ...vals) * 1.08;
+  const nice = (v) => { if (v <= 0) return 0; const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; };
+  const hi = nice(hi0), lo = -nice(-lo0), span = hi - lo || 1;
+  const y = (v) => T + (H - T - B) * (hi - v) / span, band = (W - L - R) / series.length, bw = Math.min(16, band * .24);
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="fchart" role="img" aria-label="Приход, разходи и печалба след данъци по месеци">`;
+  const step = span / 5;
+  for (let i = 0; i <= 5; i++) { const v = lo + step * i, yy = y(v); s += `<line x1="${L}" x2="${W - R}" y1="${yy}" y2="${yy}" class="g"/><text x="${L - 7}" y="${yy + 3.5}" text-anchor="end" class="t">${Math.round(v).toLocaleString('bg-BG')}</text>`; }
+  if (lo < 0) s += `<line x1="${L}" x2="${W - R}" y1="${y(0)}" y2="${y(0)}" class="z"/>`;
+  const bar = (x, v, cls, op, title) => `<rect x="${x}" y="${Math.min(y(v), y(0))}" width="${bw}" height="${Math.max(0.5, Math.abs(y(v) - y(0)))}" class="${cls}${v < 0 ? ' negv' : ''}" opacity="${op}"><title>${title}</title></rect>`;
   series.forEach((d, i) => {
-    const cx = L + band * i + band / 2, sel = d.ym === finYM, op = d.future || d.part ? .38 : 1;
+    const cx = L + band * i + band / 2, sel = d.ym === finYM, op = d.future || d.part ? .35 : 1;
+    const x1 = cx - bw * 1.5 - 2, x2 = cx - bw / 2, x3 = cx + bw / 2 + 2;
     if (sel) s += `<rect x="${cx - band / 2 + 2}" y="${T}" width="${band - 4}" height="${H - T - B}" class="sel"/>`;
     s += `<g class="fbar" data-ym="${d.ym}" style="cursor:pointer"><rect x="${cx - band / 2}" y="${T}" width="${band}" height="${H - T - B}" fill="transparent"/>
-      <rect x="${cx - bw - 1}" y="${y(d.rev)}" width="${bw}" height="${y(0) - y(d.rev)}" class="rv" opacity="${op}"><title>${ymLabel(d.ym)} · приход ${eur(d.rev)}</title></rect>
-      <rect x="${cx + 1}" y="${y(d.costs)}" width="${bw}" height="${y(0) - y(d.costs)}" class="cs" opacity="${op}"><title>${ymLabel(d.ym)} · разходи ${eur(d.costs)}</title></rect>
-      ${d.part ? `<rect x="${cx - bw - 1}" y="${y(d.part.rev)}" width="${bw}" height="${y(0) - y(d.part.rev)}" class="rv"><title>${ymLabel(d.ym)} · изпълнено: приход ${eur(d.part.rev)}</title></rect>
-      <rect x="${cx + 1}" y="${y(d.part.costs)}" width="${bw}" height="${y(0) - y(d.part.costs)}" class="cs"><title>${ymLabel(d.ym)} · изпълнено: разходи ${eur(d.part.costs)}</title></rect>` : ''}</g>
+      ${bar(x1, d.rev, 'rv', op, `${ymLabel(d.ym)} · приход ${eur(d.rev)}`)}${bar(x2, d.costs, 'cs', op, `${ymLabel(d.ym)} · разходи ${eur(d.costs)}`)}${bar(x3, d.net, 'pf', op, `${ymLabel(d.ym)} · печалба след данъци ${eur(d.net)}`)}
+      ${d.part ? bar(x1, d.part.rev, 'rv', 1, `${ymLabel(d.ym)} · изпълнено: приход ${eur(d.part.rev)}`) + bar(x2, d.part.costs, 'cs', 1, `${ymLabel(d.ym)} · изпълнено: разходи ${eur(d.part.costs)}`) + bar(x3, d.part.net, 'pf', 1, `${ymLabel(d.ym)} · изпълнено: печалба ${eur(d.part.net)}`) : ''}</g>
       <text x="${cx}" y="${H - 8}" text-anchor="middle" class="t${sel ? ' on' : ''}">${ymShort(d.ym)}</text>`;
   });
   return s + '</svg>';
 }
 
+
+/* ======================= Goals ======================= */
+const GOAL_DEF = { target: 3000, mode: 'monthly', deadline: '', price: null, hours: null, conv: 30, cleanerH: 120, churn: 0 };
+let GOAL = { ...GOAL_DEF }, goalLoaded = false;
+const WEEKS_PER_MONTH = 52 / 12;
+const COL = { blue: '#2563EB', green: '#16A34A', red: '#DC2626', orange: '#F97316', violet: '#7C3AED', teal: '#0D9488' };
+
+// Where the business stands now: next month's forecast from the recurring schedules
+function goalBase() {
+  const cur = ymOf(FD.now), nx = ymAdd(cur, 1), P = finCalc(nx, 'plan');
+  const clientsSet = new Set(); let visits = 0;
+  for (const p of Object.values(FD.props)) {
+    if (p.status !== 'active' || !p.schedule || !(Number(p.price) > 0)) continue;
+    const v = schPerMonth(p.schedule); if (!(v > 0)) continue;
+    clientsSet.add(p.client_id); visits += v;
+  }
+  const n = clientsSet.size;
+  const mat = P.lines.find((l) => l.l === EXP_CAT.materials)?.v || P.hours * FIN.matPerHour;
+  const fixed = (Number(FIN.social) + Number(FIN.accounting) + Number(FIN.solutions));
+  return {
+    ym: nx, clients: n, rev: P.rev, hours: P.hours, wages: P.wages, mat, fixed, pre: P.pre, net: P.dist,
+    price: n ? P.rev / n : 200, hoursPer: n ? P.hours / n : 8, visitsPer: n ? visits / n : 4,
+    wagePerH: P.hours ? P.wages / P.hours : BIZ.wage,
+  };
+}
+const afterTaxM = (pre) => (pre > 0 ? pre * (1 - FIN.corpTax / 100) : pre);
+
+// The plan: how many new clients, how fast, at what price
+function goalCalc(g, b) {
+  const today = new Date(FD.now.getFullYear(), FD.now.getMonth(), FD.now.getDate());
+  const end = g.deadline ? fromLocal(g.deadline) : null;
+  const weeks = end ? (end - today) / (7 * 864e5) : 0;
+  const price = Number(g.price) > 0 ? Number(g.price) : b.price;
+  const hoursPer = Number(g.hours) > 0 ? Number(g.hours) : b.hoursPer;
+  const costPer = hoursPer * (b.wagePerH + FIN.matPerHour);            // what one more client costs per month
+  const marginPer = price - costPer;                                    // what one more client adds per month (before tax)
+  const churnPm = Math.max(0, Number(g.churn) || 0) / 100;              // % of clients lost per month
+  const out = { weeks, months: weeks / WEEKS_PER_MONTH, price, hoursPer, costPer, marginPer, end, today };
+  if (!end || weeks <= 0) return { ...out, err: 'Изберете срок в бъдещето.' };
+  if (!(Number(g.target) > 0)) return { ...out, err: 'Въведете цел.' };
+  if (marginPer <= 0) return { ...out, err: `При ${eur(price)}/мес и ${hrs(hoursPer)} работа всеки нов клиент е на загуба (струва ${eur(costPer)}/мес). Вдигнете цената.` };
+
+  // monthly profit (after tax) if we add k new clients a week, at a given week
+  // existing clients we lose to churn take their margin with them
+  const churnLoss = (w) => { if (!churnPm) return 0; const months = w / WEEKS_PER_MONTH; return Math.max(0, b.rev - b.wages - b.mat) * (1 - Math.pow(1 - churnPm, months)); };
+  const preAt = (k, w, m = marginPer) => b.pre + k * w * m - churnLoss(w);
+  const netAt = (k, w, m) => afterTaxM(preAt(k, w, m));
+  const cumNet = (k, m = marginPer) => { let t = 0; const n = Math.ceil(weeks); for (let w = 1; w <= n; w++) t += netAt(k, Math.min(w, weeks), m) / WEEKS_PER_MONTH; return t; };
+  const solve = (f, lo, hi) => { if (f(hi) < 0) return null; for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; if (f(mid) >= 0) hi = mid; else lo = mid; } return hi; };
+
+  let k;               // new clients per week
+  if (g.mode === 'monthly') k = solve((x) => netAt(x, weeks, marginPer) - g.target, 0, 500);
+  else k = solve((x) => cumNet(x) - g.target, 0, 500);
+  if (k === null) return { ...out, err: 'Целта е недостижима с тези условия.' };
+  const already = g.mode === 'monthly' ? netAt(0, weeks, marginPer) >= g.target : cumNet(0) >= g.target;
+  const N = k * weeks;
+  // price needed for a given pace (clients/week)
+  const priceFor = (kk) => {
+    const m = solve((mm) => (g.mode === 'monthly' ? netAt(kk, weeks, mm) : cumNet(kk, mm)) - g.target, -5000, 100000);
+    return m === null ? null : m + costPer;
+  };
+  const endHours = b.hours + N * hoursPer;
+  return { ...out, k, N, already, perMonth: k * WEEKS_PER_MONTH, offersPerWeek: k / (Math.max(1, g.conv) / 100),
+    endClients: b.clients + N, endRev: b.rev + N * price, endHours, cleaners: endHours / Math.max(1, g.cleanerH),
+    nowCleaners: b.hours / Math.max(1, g.cleanerH), netAt, cumNet, priceFor, perVisit: price / Math.max(1, b.visitsPer) };
+}
+
+function lineChartSVG({ labels, lines, yFmt = (v) => Math.round(v).toLocaleString('bg-BG'), h = 230 }) {
+  const W = 720, H = h, L = 54, R = 10, T = 12, B = 26;
+  const all = lines.flatMap((l) => l.pts.filter((v) => v !== null));
+  const hi0 = Math.max(1, ...all) * 1.08, lo0 = Math.min(0, ...all);
+  const nice = (v) => { if (v <= 0) return 0; const p = Math.pow(10, Math.floor(Math.log10(v))), f = v / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p; };
+  const hi = nice(hi0), lo = lo0 < 0 ? -nice(-lo0 * 1.08) : 0, span = hi - lo || 1;
+  const n = labels.length, x = (i) => L + (W - L - R) * (n <= 1 ? .5 : i / (n - 1)), y = (v) => T + (H - T - B) * (hi - v) / span;
+  let s = `<svg viewBox="0 0 ${W} ${H}" class="fchart" role="img">`;
+  for (let i = 0; i <= 4; i++) { const v = lo + span / 4 * i; s += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="g"/><text x="${L - 7}" y="${y(v) + 3.5}" text-anchor="end" class="t">${yFmt(v)}</text>`; }
+  const every = Math.ceil(n / 12);
+  labels.forEach((l, i) => { if (i % every === 0 || i === n - 1) s += `<text x="${x(i)}" y="${H - 8}" text-anchor="middle" class="t">${esc(l)}</text>`; });
+  for (const ln of lines) {
+    const d = ln.pts.map((v, i) => (v === null ? '' : `${x(i)},${y(v)}`)).filter(Boolean);
+    if (ln.area) s += `<path d="M${x(0)},${y(Math.max(lo, 0))} L${d.join(' L')} L${x(n - 1)},${y(Math.max(lo, 0))} Z" fill="${ln.color}" opacity=".12"/>`;
+    s += `<polyline points="${d.join(' ')}" fill="none" stroke="${ln.color}" stroke-width="${ln.w || 2.5}" ${ln.dash ? 'stroke-dasharray="6 5"' : ''} stroke-linejoin="round"/>`;
+    if (ln.dots) ln.pts.forEach((v, i) => { if (v !== null) s += `<circle cx="${x(i)}" cy="${y(v)}" r="3.2" fill="${ln.color}"><title>${esc(labels[i])} · ${esc(ln.name)}: ${eur(v)}</title></circle>`; });
+  }
+  return s + '</svg>';
+}
+
+async function loadGoal() {
+  if (goalLoaded) return;
+  const { data } = await supabase.from('app_settings').select('value').eq('key', 'goal').maybeSingle();
+  GOAL = { ...GOAL_DEF, ...(data?.value || {}) };
+  if (!GOAL.deadline) { const d = new Date(); d.setMonth(d.getMonth() + 6); GOAL.deadline = ymd(d); }
+  goalLoaded = true;
+}
+
+function renderGoal() {
+  if (!FD) return;
+  const box = $('f-goal');
+  const b = goalBase();
+  const g = GOAL;
+  box.innerHTML = `
+    <div class="card fcard">
+      <h2>Цел</h2>
+      <form class="goal-form" novalidate>
+        <div class="seg goal-mode">
+          <label><input type="radio" name="mode" value="monthly" ${g.mode !== 'total' ? 'checked' : ''}><span>Печалба на месец</span></label>
+          <label><input type="radio" name="mode" value="total" ${g.mode === 'total' ? 'checked' : ''}><span>Общо до срока</span></label>
+        </div>
+        <div class="two">
+          <div class="field"><label data-k="tlabel">${g.mode === 'total' ? 'Обща печалба след данъци до срока (€)' : 'Печалба след данъци на месец (€)'}</label><input class="input" name="target" type="number" min="0" step="50" inputmode="decimal" value="${g.target}"></div>
+          <div class="field"><label>Срок</label><input class="input" name="deadline" type="date" value="${g.deadline}"></div>
+        </div>
+        <details class="goal-adv"><summary>Допускания за новите клиенти</summary>
+          <div class="spec-grid">
+            <div class="field"><label>Средна цена на нов клиент €/мес</label><input class="input" name="price" type="number" min="0" step="10" inputmode="decimal" value="${g.price ?? ''}" placeholder="${Math.round(b.price)} (сегашната средна)"></div>
+            <div class="field"><label>Часове работа на клиент / мес</label><input class="input" name="hours" type="number" min="0" step="0.5" inputmode="decimal" value="${g.hours ?? ''}" placeholder="${(Math.round(b.hoursPer * 10) / 10).toLocaleString('bg-BG')} (сегашните)"></div>
+            <div class="field"><label>Оферти, които стават клиенти (%)</label><input class="input" name="conv" type="number" min="1" max="100" step="1" value="${g.conv}"></div>
+            <div class="field"><label>Отпадащи клиенти на месец (%)</label><input class="input" name="churn" type="number" min="0" max="50" step="0.5" value="${g.churn || 0}"></div>
+            <div class="field"><label>Часове на хигиенист на месец</label><input class="input" name="cleanerH" type="number" min="10" step="10" value="${g.cleanerH}"></div>
+          </div>
+          <p class="note">Празните полета вземат средното от сегашните ви клиенти. Заплата ${eur(b.wagePerH)}/ч и материали ${eur(FIN.matPerHour)}/ч идват от модела на разходите.</p>
+        </details>
+        ${isOwner() ? '<div class="actions"><button class="btn secondary" type="submit"><span class="label">Запази целта</span></button></div>' : ''}
+      </form>
+    </div>
+    <div data-k="gout"></div>`;
+  const f = box.querySelector('.goal-form');
+  const read = () => {
+    const n = (k) => { const v = f[k].value.trim(); return v === '' ? null : Number(v.replace(',', '.')); };
+    return { ...GOAL, mode: f.querySelector('[name="mode"]:checked').value, target: n('target') || 0, deadline: f.deadline.value, price: n('price'), hours: n('hours'), conv: n('conv') || 30, churn: n('churn') || 0, cleanerH: n('cleanerH') || 120 };
+  };
+  const draw = () => {
+    const gg = read();
+    box.querySelector('[data-k="tlabel"]').textContent = gg.mode === 'total' ? 'Обща печалба след данъци до срока (€)' : 'Печалба след данъци на месец (€)';
+    box.querySelector('[data-k="gout"]').innerHTML = goalOutHTML(gg, b);
+  };
+  f.addEventListener('input', draw);
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const value = read(), btn = f.querySelector('button'); busy(btn, true, 'Запазване…');
+    const { error } = await supabase.from('app_settings').upsert({ key: 'goal', value, updated_at: new Date().toISOString() });
+    busy(btn, false);
+    if (error) return toast(authMessage(error));
+    GOAL = value; toast('Целта е запазена.');
+  });
+  draw();
+}
+
+function goalOutHTML(g, b) {
+  const r = goalCalc(g, b);
+  const fmtN = (v, d = 1) => (Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).toLocaleString('bg-BG');
+  const now = afterTaxM(b.pre);
+  const baseCard = `<div class="card fcard"><h2>Откъде тръгваме — прогноза ${esc(ymLabel(b.ym))}</h2>
+    <div class="sf-stats f-kpis">
+      <div class="stat"><div class="lbl">Клиенти с график</div><div class="val">${b.clients}</div></div>
+      <div class="stat"><div class="lbl">Приход / мес</div><div class="val">${eur0(b.rev)}<small class="fdelta">≈ ${eur0(b.price)} на клиент</small></div></div>
+      <div class="stat"><div class="lbl">Работа / мес</div><div class="val">${hrs(b.hours)}<small class="fdelta">≈ ${fmtN(b.hoursPer)} ч на клиент</small></div></div>
+      <div class="stat ${now < 0 ? 'loss' : 'gain'}"><div class="lbl">Печалба след данъци / мес</div><div class="val">${eur0(now)}</div></div>
+    </div></div>`;
+  if (r.err) return baseCard + `<div class="alert error">${ICONS.error}<span>${esc(r.err)}</span></div>`;
+
+  const isM = g.mode !== 'total';
+  const startNet = isM ? now : 0;
+  const pct = Math.max(0, Math.min(100, (isM ? now : 0) / g.target * 100));
+  // monthly points from now to the deadline
+  const nMonths = Math.max(1, Math.ceil(r.months));
+  const labels = [], plan = [], base = [], target = [], cum = [], cumBase = [], newC = [], oldC = [];
+  let cAcc = 0, cbAcc = 0;
+  for (let i = 0; i <= nMonths; i++) {
+    const w = Math.min(r.weeks, i * WEEKS_PER_MONTH), d = new Date(r.today); d.setMonth(d.getMonth() + i);
+    labels.push(i === 0 ? 'сега' : MSHORT[d.getMonth()]);
+    plan.push(r.netAt(r.k, w, r.marginPer)); base.push(r.netAt(0, w, r.marginPer));
+    if (i) { cAcc += r.netAt(r.k, w, r.marginPer); cbAcc += r.netAt(0, w, r.marginPer); }
+    cum.push(cAcc); cumBase.push(cbAcc);
+    target.push(g.target);
+    newC.push(r.k * w); oldC.push(b.clients);
+  }
+  const chart = isM
+    ? lineChartSVG({ labels, lines: [
+        { name: 'Цел', pts: target, color: COL.red, dash: true, w: 2 },
+        { name: 'Без нови клиенти', pts: base, color: COL.blue, w: 2 },
+        { name: 'С плана', pts: plan, color: COL.green, dots: true, area: true, w: 3 }] })
+    : lineChartSVG({ labels, lines: [
+        { name: 'Цел', pts: target, color: COL.red, dash: true, w: 2 },
+        { name: 'Без нови клиенти', pts: cumBase, color: COL.blue, w: 2 },
+        { name: 'С плана', pts: cum, color: COL.green, dots: true, area: true, w: 3 }] });
+  const maxC = Math.max(1, ...newC.map((v, i) => v + oldC[i]));
+  const bars = labels.map((l, i) => `<div class="gbar"><div class="gstack" title="${esc(l)}: ${b.clients} сегашни + ${fmtN(newC[i])} нови">
+      <i class="new" style="height:${newC[i] / maxC * 100}%"></i><i class="old" style="height:${oldC[i] / maxC * 100}%"></i></div><small>${esc(l)}</small><b>${Math.round(oldC[i] + newC[i])}</b></div>`).join('');
+
+  const kpi = (l, v, sub = '', cls = '') => `<div class="stat ${cls}"><div class="lbl">${l}</div><div class="val">${v}${sub ? `<small class="fdelta">${sub}</small>` : ''}</div></div>`;
+  const per = (x) => (x >= 1 ? fmtN(x) : `1 на ${fmtN(1 / x)}`);
+  const scen = [0.7, 0.85, 1, 1.2, 1.5].map((f) => {
+    const gg = { ...g, price: r.price * f }, rr = goalCalc(gg, b);
+    return `<tr class="${f === 1 ? 'on' : ''}"><td>${eur0(r.price * f)}<small>${f === 1 ? 'избраната' : (f > 1 ? '+' : '') + Math.round((f - 1) * 100) + '%'}</small></td>
+      <td class="r">${rr.err ? '—' : Math.ceil(rr.N)}</td><td class="r">${rr.err ? '—' : fmtN(rr.k)}</td><td class="r">${rr.err ? '<span class="neg">на загуба</span>' : fmtN(rr.offersPerWeek)}</td></tr>`;
+  }).join('');
+  const paces = [0.25, 0.5, 1, 2, 3].map((k) => {
+    const p = r.priceFor(k);
+    return `<tr><td>${per(k)} <small>${k >= 1 ? 'на седмица' : 'седмици'}</small></td><td class="r">${Math.round(k * r.weeks)}</td>
+      <td class="r ${p === null ? '' : p > r.price * 1.5 ? 'neg' : ''}">${p === null ? 'недостижимо' : p <= r.costPer ? 'над разходите' : eur0(p) + ' / мес'}</td>
+      <td class="r">${p === null || p <= r.costPer ? '—' : eur0(p / Math.max(1, b.visitsPer))}</td></tr>`;
+  }).join('');
+
+  return baseCard + `
+    ${r.already ? `<div class="alert success">${ICONS.success}<span>С сегашните клиенти целта се постига и без нови. Може да вдигнете целта.</span></div>` : ''}
+    <div class="card fcard goal-hero">
+      <h2>Какво трябва — до ${new Date(r.end).toLocaleDateString('bg-BG')} (${fmtN(r.weeks, 0)} седмици)</h2>
+      <div class="sf-stats f-kpis">
+        ${kpi('Нови клиенти общо', Math.ceil(r.N), `по ${eur0(r.price)}/мес и ${fmtN(r.hoursPer)} ч`, 'proj total')}
+        ${kpi('На седмица', fmtN(r.k), `≈ ${fmtN(r.perMonth)} на месец`, 'proj')}
+        ${kpi('Оферти на седмица', fmtN(r.offersPerWeek), `при ${g.conv}% успеваемост`)}
+        ${kpi('Хигиенисти накрая', fmtN(r.cleaners), `${hrs(r.endHours)}/мес · сега ${fmtN(r.nowCleaners)}`, r.cleaners > Math.max(1, Math.ceil(r.nowCleaners)) ? 'warn' : '')}
+      </div>
+      ${isM ? `<div class="gprog"><div class="gp-top"><span>Сега <b>${eur0(now)}</b> / мес</span><span>Цел <b>${eur0(g.target)}</b> / мес</span></div>
+        <div class="gp-bar"><i style="width:${pct}%"></i></div><small>${Math.round(pct)}% от целта · липсват ${eur0(Math.max(0, g.target - now))} / мес</small></div>` : ''}
+      <p class="note">Всеки нов клиент носи ${eur(r.price)}/мес и струва ${eur(r.costPer)}/мес (заплата + материали) → <b>+${eur(r.marginPer)}/мес</b> преди данък. Постоянните разходи не растат с клиентите.</p>
+    </div>
+
+    <div class="card fcard">
+      <h2>${isM ? 'Печалба след данъци на месец' : 'Натрупана печалба след данъци'}</h2>
+      <div class="flegend"><span><i style="background:${COL.green}"></i>С плана</span><span><i style="background:${COL.blue}"></i>Без нови клиенти</span><span><i style="background:${COL.red}"></i>Цел</span></div>
+      ${chart}
+    </div>
+
+    <div class="card fcard">
+      <h2>Клиенти по месеци</h2>
+      <div class="flegend"><span><i style="background:${COL.blue}"></i>Сегашни</span><span><i style="background:${COL.green}"></i>Нови по плана</span></div>
+      <div class="gbars">${bars}</div>
+    </div>
+
+    <div class="card fcard">
+      <h2>Ако цената на новите клиенти е различна</h2>
+      <div class="ftbl-wrap"><table class="ftbl"><thead><tr><th>Средна цена / мес</th><th class="r">Нови клиенти</th><th class="r">На седмица</th><th class="r">Оферти / седм.</th></tr></thead><tbody>${scen}</tbody></table></div>
+      <p class="note">По-висока цена = по-малко нови клиенти за същата цел.</p>
+    </div>
+
+    <div class="card fcard">
+      <h2>Ако взимаме определен брой клиенти</h2>
+      <div class="ftbl-wrap"><table class="ftbl"><thead><tr><th>Темпо</th><th class="r">Нови до срока</th><th class="r">Нужна средна цена</th><th class="r">≈ на почистване</th></tr></thead><tbody>${paces}</tbody></table></div>
+      <p class="note">Каква средна месечна цена трябва да имат новите клиенти, ако реално успяваме да вземем толкова. „≈ на почистване“ е при ${fmtN(b.visitsPer)} посещения на месец.</p>
+    </div>`;
+}
 
 function renderExpenses() {
   if (!FD) return;
@@ -4402,7 +4664,7 @@ function renderFinances() {
     : `<div class="stat ${cls}"><div class="lbl">${l}</div><div class="val">${eur0(c[k])}${sub || delta(c[k], pm[k])}</div></div>`;
   const dr = (l, rule, v, cls = '') => `<div class="pb-row ${cls}"><span>${esc(l)}${rule ? ` <em>${esc(rule)}</em>` : ''}</span><b>${v}</b></div>`;
   const series = []; for (let i = -8; i <= 3; i++) { const ym = ymAdd(cur, i); const x = finCalc(ym, ym === cur ? 'plan' : 'done'); const d = finCalc(ym, 'done');
-    series.push({ ym, rev: x.rev, costs: x.costs, future: x.future, part: ym === cur ? { rev: d.rev, costs: d.costs } : null }); }
+    series.push({ ym, rev: x.rev, costs: x.costs, net: x.dist, future: x.future, part: ym === cur ? { rev: d.rev, costs: d.costs, net: d.dist } : null }); }
 
   // cash this month
   const inM = (d) => d && d.slice(0, 7) === finYM;
@@ -4458,7 +4720,7 @@ function renderFinances() {
     <div class="fgrid">
       <div class="card fcard">
         <h2>Приход и разходи</h2>
-        <div class="flegend"><span><i class="rv"></i>Приход</span><span><i class="cs"></i>Разходи</span><span class="muted">бледите = прогноза / още планирано · натиснете месец</span></div>
+        <div class="flegend"><span><i class="rv"></i>Приход</span><span><i class="cs"></i>Разходи</span><span><i class="pf"></i>Печалба след данъци</span><span class="muted">бледите = прогноза / още планирано · натиснете месец</span></div>
         ${finChart(series)}
       </div>
       <div class="card fcard">
@@ -4546,7 +4808,9 @@ function renderFinances() {
 document.querySelectorAll('[data-ftab]').forEach((t) => t.addEventListener('click', () => {
   finTab = t.dataset.ftab;
   document.querySelectorAll('[data-ftab]').forEach((x) => { x.classList.toggle('active', x === t); x.setAttribute('aria-selected', String(x === t)); });
-  $('f-body').hidden = finTab !== 'main'; $('f-exp').hidden = finTab !== 'exp';
+  $('f-body').hidden = finTab !== 'main'; $('f-exp').hidden = finTab !== 'exp'; $('f-goal').hidden = finTab !== 'goal';
+  document.querySelector('.fin-bar').hidden = finTab === 'goal';     // goals aren't tied to the selected month
+  if (finTab === 'goal') loadGoal().then(renderGoal);
 }));
 $('f-prev').addEventListener('click', () => { finYM = ymAdd(finYM, -1); renderFinances(); });
 $('f-next').addEventListener('click', () => { finYM = ymAdd(finYM, 1); renderFinances(); });
