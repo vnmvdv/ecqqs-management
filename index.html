@@ -1417,7 +1417,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.41 — прозорците не се затварят случайно</div>
+      <div class="version">v0.42 — месечни PDF отчети</div>
     </div>
   </aside>
 
@@ -1462,6 +1462,7 @@
       <div class="cal-tools" id="cal-tools">
         <button class="sq-btn" id="cal-add" title="Ново събитие" aria-label="Ново събитие" hidden><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
         <select class="input cal-people" id="cal-people" aria-label="Чии събития" hidden></select>
+        <button class="sq-btn" type="button" data-export="calendar" title="Изтегли отчет (PDF)" aria-label="Изтегли отчет (PDF)"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg></span></button>
       </div>
       <div id="cal"></div>
     </section>
@@ -1474,6 +1475,7 @@
       </div>
       <div class="toolbar sqrow">
         <button class="sq-btn" id="c-add" title="Нов клиент" aria-label="Нов клиент" hidden><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span></button>
+<button class="sq-btn" type="button" data-export="clients" title="Изтегли отчет (PDF)" aria-label="Изтегли отчет (PDF)"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg></span></button>
         <div class="chips" id="c-filters" role="group" aria-label="Филтър по статус">
           <button class="chip icon active" data-f="all" title="Всички" aria-label="Всички" aria-pressed="true"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="5.5"/></svg></span><span class="n"></span></button>
           <button class="chip icon" data-f="active" title="Активни" aria-label="Активни" aria-pressed="false"><span class="emo" aria-hidden="true"><span class="sdot ok" aria-hidden="true"></span></span><span class="n"></span></button>
@@ -1495,6 +1497,7 @@
           <button class="sq-btn" id="f-next" title="Следващ месец" aria-label="Следващ месец"><span class="emo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 6l6 6-6 6"/></svg></span></button>
         </div>
         <span class="badge f-kind" id="f-kind" hidden></span>
+        <button class="sq-btn" type="button" data-export="finances" title="Изтегли отчет (PDF)" aria-label="Изтегли отчет (PDF)"><span class="emo" aria-hidden="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14"/></svg></span></button>
       </div>
       <div class="sf-tabs f-tabs" role="tablist" style="grid-template-columns:1fr 1fr 1fr">
         <button type="button" role="tab" class="sf-tab active" data-ftab="main" aria-selected="true">Обобщение</button>
@@ -1713,6 +1716,18 @@
   <div class="sheet-inner">
     <button class="x" data-close aria-label="Затвори">×</button>
     <div id="cl-root"></div>
+  </div>
+</dialog>
+<!-- Report export -->
+<dialog class="sheet" id="dlg-export" aria-labelledby="ex-title">
+  <div class="sheet-inner">
+    <button class="x" data-close aria-label="Затвори">×</button>
+    <h2 id="ex-title">Отчет</h2>
+    <p class="lead">Изберете месец — ще се изтегли PDF отчет за него.</p>
+    <form id="ex-form" novalidate>
+      <div class="field"><label for="ex-month">Месец</label><input class="input" id="ex-month" type="month" required></div>
+      <div class="actions"><button class="btn" id="ex-go" type="submit"><span class="label">Изтегли PDF</span></button></div>
+    </form>
   </div>
 </dialog>
 <!-- Property -->
@@ -4860,6 +4875,247 @@ document.querySelectorAll('[data-ftab]').forEach((t) => t.addEventListener('clic
 $('f-prev').addEventListener('click', () => { finYM = ymAdd(finYM, -1); renderFinances(); });
 $('f-next').addEventListener('click', () => { finYM = ymAdd(finYM, 1); renderFinances(); });
 $('f-today').addEventListener('click', () => { finYM = ymOf(new Date()); renderFinances(); });
+
+/* ======================= Monthly PDF reports ======================= */
+let pdfReady = null;
+function loadScriptOnce(src) {
+  return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('Неуспешно зареждане на ' + src)); document.head.appendChild(s); });
+}
+function loadPdf() {
+  if (!pdfReady) pdfReady = loadScriptOnce('/vendor/pdfmake-0.2.15.min.js').then(() => loadScriptOnce('/vendor/pdfmake-vfs-fonts-0.2.15.js'));
+  return pdfReady;
+}
+const RP = {   // report look: newsprint palette
+  ink: '#111111', muted: '#6B6B66', rule: '#D9D7CF', paper: '#F2F1EC', accent: '#CC0000', ok: '#16A34A', warn: '#B45309',
+};
+const pEur = (n) => (n < 0 ? '−' : '') + Math.abs(Number(n) || 0).toLocaleString('bg-BG', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+const pHrs = (h) => (Math.round(h * 10) / 10).toLocaleString('bg-BG') + ' ч';
+const pDate = (d) => new Date(d).toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' });
+const pTime = (d) => new Date(d).toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' });
+function rpTable(head, rows, widths, opt = {}) {
+  return {
+    table: { headerRows: 1, widths, body: [head.map((h) => ({ text: h, style: 'th', alignment: opt.right?.includes(head.indexOf(h)) ? 'right' : 'left' })), ...rows] },
+    layout: {
+      hLineWidth: (i, node) => (i === 0 || i === node.table.body.length ? 0 : i === 1 ? 1.2 : 0.4),
+      vLineWidth: () => 0, hLineColor: (i) => (i === 1 ? RP.ink : RP.rule),
+      paddingTop: () => 4, paddingBottom: () => 4, paddingLeft: (i) => (i ? 5 : 0), paddingRight: () => 5,
+      fillColor: (i, node) => (opt.totalRow && i === node.table.body.length - 1 ? RP.paper : null),
+    },
+    margin: [0, 0, 0, 12],
+  };
+}
+const rpR = (t, extra = {}) => ({ text: t, alignment: 'right', ...extra });
+const rpH = (t) => ({ text: t.toUpperCase(), style: 'h2' });
+function rpKpis(items) {   // [label, value, color?]
+  return { columns: items.map(([l, v, c]) => ({ stack: [{ text: l.toUpperCase(), style: 'kl' }, { text: v, style: 'kv', color: c || RP.ink }], margin: [0, 0, 8, 0] })), margin: [0, 0, 0, 14] };
+}
+function rpDoc(title, sub, content, landscape = false) {
+  const made = new Date().toLocaleString('bg-BG', { dateStyle: 'medium', timeStyle: 'short' });
+  return {
+    pageSize: 'A4', pageOrientation: landscape ? 'landscape' : 'portrait', pageMargins: [36, 70, 36, 44],
+    info: { title: `${title} — ${sub}`, author: 'EverClean QQS' },
+    header: () => ({ margin: [36, 24, 36, 0], columns: [
+      { stack: [{ text: 'EverClean QQS', fontSize: 15, bold: true }, { text: 'СИСТЕМА ЗА УПРАВЛЕНИЕ', fontSize: 6.5, color: RP.muted, characterSpacing: 1 }] },
+      { stack: [{ text: title, fontSize: 12, bold: true, alignment: 'right' }, { text: sub, fontSize: 9, color: RP.muted, alignment: 'right' }] }],
+    }),
+    footer: (page, pages) => ({ margin: [36, 14, 36, 0], columns: [
+      { text: `ЕВЪРКЛИЙН КЮКЮЕС ООД · генерирано ${made}${me ? ' · ' + (fullName(me) || me.email) : ''}`, fontSize: 7, color: RP.muted },
+      { text: `${page} / ${pages}`, fontSize: 7, color: RP.muted, alignment: 'right' }] }),
+    content: [{ canvas: [{ type: 'line', x1: 0, y1: 0, x2: landscape ? 770 : 523, y2: 0, lineWidth: 2, lineColor: RP.ink }], margin: [0, 0, 0, 12] }, ...content],
+    defaultStyle: { font: 'Roboto', fontSize: 8.5, color: RP.ink, lineHeight: 1.15 },
+    styles: {
+      h2: { fontSize: 9, bold: true, characterSpacing: 0.8, color: RP.muted, margin: [0, 6, 0, 6] },
+      th: { fontSize: 7, bold: true, color: RP.muted, characterSpacing: 0.4 },
+      kl: { fontSize: 6.5, bold: true, color: RP.muted, characterSpacing: 0.6 },
+      kv: { fontSize: 15, bold: true, margin: [0, 2, 0, 0] },
+      small: { fontSize: 7, color: RP.muted },
+      note: { fontSize: 7.5, color: RP.muted, italics: true, margin: [0, 0, 0, 10] },
+    },
+  };
+}
+const monthRange = (ym) => { const s = ymStart(ym), e = ymStart(ymAdd(ym, 1)); return [s, e]; };
+const fileSlug = (ym) => ymLabel(ym).replace(/\s+/g, '-');
+
+/* ---- Calendar ---- */
+async function reportCalendar(ym) {
+  const [ms, me2] = monthRange(ym);
+  await waitFor(() => window.rrule);
+  const [{ data: evs, error }, { data: profs }, { data: props }] = await Promise.all([
+    supabase.from('events').select('id,title,location,description,start_at,end_at,all_day,recurrence,exdates,property_id,event_assignees(user_id)'),
+    supabase.from('profiles').select('id,fname,lname,email'),
+    supabase.from('properties').select('id,name,address,neighbourhood,city,client_id'),
+  ]);
+  if (error) throw error;
+  const names = Object.fromEntries((profs || []).map((p) => [p.id, fullName(p) || p.email]));
+  const pmap = Object.fromEntries((props || []).map((p) => [p.id, p]));
+  const blocks = expandEvents((evs || []).map((r) => ({ ...r, all_day: false, _ad: r.all_day })), me2)
+    .filter((b) => b.s < me2 && b.e > ms).sort((a, b) => a.s - b.s);
+  const per = {}; let totH = 0;
+  const rows = blocks.map((b) => {
+    const r = b.r, h = r._ad ? 0 : (b.e - b.s) / 3600000, who = (r.event_assignees || []).map((a) => names[a.user_id] || '—');
+    const p = r.property_id ? pmap[r.property_id] : null;
+    totH += h;
+    (r.event_assignees || []).forEach((a) => { const k = names[a.user_id] || '—'; (per[k] ||= { n: 0, h: 0 }); per[k].n++; per[k].h += h; });
+    const where = p ? [p.address, p.neighbourhood, p.city && p.city !== 'София' ? p.city : ''].filter(Boolean).join(', ') : (r.location || '');
+    const done = b.e <= new Date();
+    return [
+      { text: b.s.toLocaleDateString('bg-BG', { weekday: 'short', day: '2-digit', month: '2-digit' }), noWrap: true },
+      { text: r._ad ? 'цял ден' : `${pTime(b.s)}–${pTime(b.e)}`, noWrap: true },
+      { stack: [{ text: r.title || '(без заглавие)', bold: true }, ...(r.description ? [{ text: r.description, style: 'small' }] : [])] },
+      { text: where || '—', color: where ? RP.ink : RP.muted },
+      who.join(', ') || { text: 'не е назначен', color: RP.accent },
+      rpR(h ? pHrs(h) : '—'),
+      { text: done ? 'изпълнено' : 'предстои', color: done ? RP.ok : RP.muted, fontSize: 7.5 },
+    ];
+  });
+  const cleanings = blocks.filter((b) => b.r.property_id).length;
+  const content = [
+    rpKpis([['Събития', String(blocks.length)], ['Почиствания', String(cleanings)], ['Часове работа', pHrs(totH)],
+      ['Изпълнени', String(blocks.filter((b) => b.e <= new Date()).length)]]),
+    rpH('Разпределение по хора'),
+    Object.keys(per).length ? rpTable(['Служител', 'Събития', 'Часове'], Object.entries(per).sort((a, b) => b[1].h - a[1].h).map(([k, v]) => [k, rpR(String(v.n)), rpR(pHrs(v.h))]), ['*', 70, 70], { right: [1, 2] })
+      : { text: 'Няма назначени хора.', style: 'note' },
+    rpH(`График — ${ymLabel(ym)}`),
+    rows.length ? rpTable(['Дата', 'Час', 'Събитие', 'Адрес', 'Хигиенисти', 'Часове', 'Статус'], rows, [62, 58, '*', 150, 110, 40, 52], { right: [5] })
+      : { text: 'Няма събития през месеца.', style: 'note' },
+  ];
+  return [rpDoc('Календар', ymLabel(ym), content, true), `kalendar-${fileSlug(ym)}.pdf`];
+}
+
+/* ---- Clients ---- */
+async function reportClients(ym) {
+  const [ms, me2] = monthRange(ym), now = new Date();
+  await waitFor(() => window.rrule);
+  const [{ data: cls, error }, { data: evs }, { data: pays }] = await Promise.all([
+    supabase.from('clients').select('*, properties(*)').order('name'),
+    supabase.from('events').select('id,start_at,end_at,all_day,recurrence,exdates,property_id').not('property_id', 'is', null),
+    supabase.from('client_payments').select('client_id,amount,paid_on'),
+  ]);
+  if (error) throw error;
+  const blocks = expandEvents(evs || [], me2);
+  const byProp = {};
+  for (const b of blocks) {
+    const t = (byProp[b.r.property_id] ||= { done: 0, plan: 0, past: 0 });
+    if (b.s >= ms && b.s < me2) { t.plan++; if (b.e <= now) t.done++; }
+    if (b.e <= now && b.e <= me2) t.past++;               // done cleanings up to the end of the month → billed
+  }
+  const rows = []; const T = { rev: 0, revPlan: 0, paid: 0, bal: 0, n: 0, nPlan: 0 };
+  const statusCount = {};
+  for (const c of cls || []) {
+    statusCount[c.status] = (statusCount[c.status] || 0) + 1;
+    const props = (c.properties || []).length ? c.properties : [null];
+    const paidM = (pays || []).filter((x) => x.client_id === c.id && x.paid_on >= ymd(ms) && x.paid_on < ymd(me2)).reduce((t, x) => t + Number(x.amount), 0);
+    let billed = 0;
+    (c.properties || []).forEach((p) => { billed += (byProp[p.id]?.past || 0) * (perVisitOf(p) || 0); });
+    const paidAll = (pays || []).filter((x) => x.client_id === c.id && x.paid_on < ymd(me2)).reduce((t, x) => t + Number(x.amount), 0);
+    const bal = billed - paidAll;
+    T.paid += paidM; T.bal += bal;
+    props.forEach((p, i) => {
+      const pv = p ? perVisitOf(p) || 0 : 0, m = p ? byProp[p.id] || { done: 0, plan: 0 } : { done: 0, plan: 0 };
+      T.rev += m.done * pv; T.revPlan += m.plan * pv; T.n += m.done; T.nPlan += m.plan;
+      const ct = p ? contractState(p) : null;
+      rows.push([
+        { stack: [{ text: c.name + (c.vip ? '  VIP' : ''), bold: true }, { text: CL_STATUS[c.status] || c.status, style: 'small' }] },
+        p ? { stack: [{ text: p.name, bold: true }, { text: [p.address, p.neighbourhood, p.city].filter(Boolean).join(', ') || '—', style: 'small' }, ...(specText(p) ? [{ text: (PR_KIND[p.kind] || PR_KIND.other)[1] + ' · ' + specText(p), style: 'small' }] : [])] } : { text: 'без обект', color: RP.muted },
+        { stack: [{ text: (p?.contact_name || c.contact_name || '—') }, { text: [p?.contact_phone || c.contact_phone, p?.contact_email || c.contact_email].filter(Boolean).join(' · '), style: 'small' }] },
+        p ? { stack: [{ text: SERVICE[p.service_type] || '—' }, { text: p.schedule ? schText(p.schedule) : (p.schedule_note || '—'), style: 'small' }] } : '',
+        p && p.price ? { stack: [rpR(pEur(p.price)), rpR(PRICE_MODEL[p.price_model] || '', { style: 'small' }), rpR([PAY_METHOD[p.payment_method], p.invoice ? 'фактура' : ''].filter(Boolean).join(' · '), { style: 'small' })] } : rpR('—'),
+        rpR(p ? `${m.done} / ${m.plan}` : ''),
+        rpR(p ? pEur(m.done * pv) : ''),
+        i === 0 ? rpR(pEur(paidM)) : '',
+        i === 0 ? rpR(Math.abs(bal) < 0.5 ? '0,00 €' : (bal > 0 ? 'дължи ' : 'предпл. ') + pEur(Math.abs(bal)), { color: bal > 0.5 ? RP.accent : bal < -0.5 ? RP.ok : RP.ink, bold: Math.abs(bal) >= 0.5 }) : '',
+        p ? { stack: [{ text: p.contract_signed ? (p.contract_number ? '№ ' + p.contract_number : 'подписан') : 'няма', color: p.contract_signed ? RP.ink : RP.muted }, ...(p.contract_end ? [{ text: 'до ' + pDate(p.contract_end), style: 'small', color: ct?.k === 'expired' ? RP.accent : RP.muted }] : [])] } : '',
+      ]);
+    });
+  }
+  rows.push([{ text: 'ОБЩО', bold: true }, '', '', '', '', rpR(`${T.n} / ${T.nPlan}`, { bold: true }), rpR(pEur(T.rev), { bold: true }), rpR(pEur(T.paid), { bold: true }),
+    rpR(pEur(T.bal), { bold: true, color: T.bal > 0.5 ? RP.accent : RP.ink }), '']);
+  const content = [
+    rpKpis([['Клиенти', String((cls || []).length)], ['Активни', String(statusCount.active || 0)], ['Почиствания (изп. / план)', `${T.n} / ${T.nPlan}`],
+      ['Приход (изпълнено)', pEur(T.rev)], ['Приход (целият месец)', pEur(T.revPlan)], ['Получено', pEur(T.paid), RP.ok]]),
+    rpH(`Клиенти и обекти — ${ymLabel(ym)}`),
+    rpTable(['Клиент', 'Обект / адрес', 'Контакт', 'Услуга / честота', 'Цена', 'Почист. изп./план', 'Приход', 'Платено', 'Баланс', 'Договор'], rows,
+      [78, 120, 92, 92, 58, 42, 52, 50, 62, '*'], { right: [4, 5, 6, 7, 8], totalRow: true }),
+    { text: 'Приход = изпълнени почиствания × цена на посещение. Баланс = всички изпълнени почиствания до края на месеца − всички плащания до края на месеца.', style: 'note' },
+  ];
+  return [rpDoc('Клиенти', ymLabel(ym), content, true), `klienti-${fileSlug(ym)}.pdf`];
+}
+
+/* ---- Finances ---- */
+async function reportFinances(ym) {
+  await fetchFinData();
+  const cur = ymOf(FD.now), cmp = ym === cur;
+  const c = finCalc(ym, 'done'), P = cmp ? finCalc(ym, 'plan') : c;
+  const cols = cmp ? [c, P] : [c];
+  const colHead = cmp ? ['Изпълнено', '%', 'Целият месец', '%'] : ['Сума', '% от прихода'];
+  const pct = (x, v) => (x.rev > 0 ? (Math.round(Math.abs(v) / x.rev * 1000) / 10).toLocaleString('bg-BG') + '%' : '');
+  const line = (l, get, opt = {}) => [{ text: l, bold: !!opt.bold }, ...cols.flatMap((x) => { const v = get(x); return [rpR(pEur(v), { bold: !!opt.bold, color: opt.color ? opt.color(v) : (v < 0 ? RP.ink : RP.ink) }), rpR(pct(x, v), { style: 'small' })]; })];
+  const lineV = (x, l) => -(x.lines.find((y) => y.l === l)?.v || 0);
+  const distRows = [
+    line(`Приход${c.n || P.n ? ` (${cmp ? `${c.n} / ${P.n}` : c.n} почиств.)` : ''}`, (x) => x.rev, { bold: true }),
+    ...P.lines.map((y) => line(y.l + (y.est ? ' (оценка)' : ''), (x) => lineV(x, y.l))),
+    line('= Печалба преди данък', (x) => x.pre, { bold: true, color: (v) => (v < 0 ? RP.accent : RP.ink) }),
+    line(`Корпоративен данък ${FIN.corpTax}%`, (x) => -x.corp),
+    line('= За разпределяне (след данъци)', (x) => x.dist, { bold: true, color: (v) => (v < 0 ? RP.accent : RP.ok) }),
+  ];
+  // per property
+  const perProp = (set) => { const o = {}; for (const b of set) if (b.prop && b.rev) { const r = (o[b.prop.id] ||= { p: b.prop, n: 0, rev: 0, cost: 0 }); r.n++; r.rev += b.rev; r.cost += b.wage + b.ph * (BIZ.overheadPerHour + FIN.matPerHour); } return o; };
+  const pp = perProp(P.set);
+  const propRows = Object.values(pp).map((r) => ({ ...r, prof: r.rev - r.cost, m: r.rev ? (r.rev - r.cost) / r.rev * 100 : 0 })).sort((a, b) => a.m - b.m)
+    .map((r) => { const H = health(r.m); return [{ stack: [{ text: FD.cname[r.p.client_id] || '', bold: true }, { text: r.p.name, style: 'small' }] }, rpR(String(r.n)), rpR(pEur(r.rev)), rpR(pEur(r.prof), { color: r.prof < 0 ? RP.accent : RP.ink }), rpR(`${Math.round(r.m)}%`, { bold: true, color: r.m < 10 ? RP.accent : r.m < 20 ? RP.warn : RP.ok }), { text: H.label, style: 'small' }]; });
+  const inM = (d) => d && d.slice(0, 7) === ym;
+  const got = FD.cpays.filter((x) => inM(x.paid_on)).reduce((t, x) => t + Number(x.amount), 0);
+  const paidStaff = FD.spays.filter((x) => inM(x.paid_on)).reduce((t, x) => t + Number(x.amount), 0);
+  const exps = FD.exps.filter((e) => inM(e.spent_on));
+  const spent = exps.reduce((t, e) => t + Number(e.amount), 0);
+  const margin = (x) => (x.rev > 0 ? (Math.round(x.dist / x.rev * 1000) / 10).toLocaleString('bg-BG') + '%' : '—');
+  const content = [
+    cmp ? { text: 'Месецът е в ход: „Изпълнено“ = само минали почиствания, „Целият месец“ = с планираните до края на месеца.', style: 'note' }
+      : ym > cur ? { text: 'Бъдещ месец — прогноза по графиците в календара.', style: 'note' } : '',
+    rpKpis(cmp ? [['Приход', `${pEur(c.rev)} / ${pEur(P.rev)}`], ['Разходи', `${pEur(c.costs)} / ${pEur(P.costs)}`], ['Печалба след данъци', `${pEur(c.dist)} / ${pEur(P.dist)}`, P.dist < 0 ? RP.accent : RP.ok], ['Марж', `${margin(c)} / ${margin(P)}`]]
+      : [['Приход', pEur(c.rev)], ['Разходи', pEur(c.costs)], ['Печалба преди данък', pEur(c.pre), c.pre < 0 ? RP.accent : RP.ink], ['Печалба след данъци', pEur(c.dist), c.dist < 0 ? RP.accent : RP.ok], ['Нетен марж', margin(c)]]),
+    rpH('Разпределение'),
+    rpTable(['', ...colHead], distRows, cmp ? ['*', 75, 40, 75, 40] : ['*', 90, 60], { right: cmp ? [1, 2, 3, 4] : [1, 2] }),
+    rpH('Собственици'),
+    rpTable(['Собственик', 'Дял', ...(cmp ? ['Изпълнено', 'Целият месец'] : ['Дял от печалбата', `Дивидентен данък ${FIN.divTax}%`, 'Чисто'])],
+      P.owners.map((o, i) => [o.name, rpR(o.pct + '%'), ...(cmp ? [rpR(pEur(c.owners[i].net)), rpR(pEur(o.net), { bold: true, color: RP.ok })] : [rpR(pEur(o.share)), rpR('−' + pEur(o.dt)), rpR(pEur(o.net), { bold: true, color: RP.ok })])]),
+      cmp ? ['*', 50, 90, 90] : ['*', 50, 90, 90, 90], { right: cmp ? [1, 2, 3] : [1, 2, 3, 4] }),
+    rpH('Пари през месеца'),
+    rpTable(['', 'Сума'], [['Получено от клиенти', rpR(pEur(got))], ['Изплатено на персонала', rpR('−' + pEur(paidStaff))], ['Записани разходи', rpR('−' + pEur(spent))],
+      [{ text: '= Нетно движение', bold: true }, rpR(pEur(got - paidStaff - spent), { bold: true })]], ['*', 100], { right: [1], totalRow: true }),
+    rpH(`Рентабилност по обекти${cmp ? ' (целият месец)' : ''}`),
+    propRows.length ? rpTable(['Обект', 'Почист.', 'Приход', 'Печалба', 'Марж', ''], propRows, ['*', 45, 70, 70, 40, 80], { right: [1, 2, 3, 4] }) : { text: 'Няма почиствания с цена.', style: 'note' },
+    { text: `Печалба по обект = приход − заплати − постоянни разходи ${pEur(BIZ.overheadPerHour)}/ч − материали ${pEur(FIN.matPerHour)}/ч, преди данък.`, style: 'note' },
+    rpH('Разходи'),
+    exps.length ? rpTable(['Дата', 'Категория', 'Бележка', 'Сума'], [...exps.map((e) => [pDate(e.spent_on), EXP_CAT[e.category] || e.category, e.note || '', rpR(pEur(e.amount))]),
+      [{ text: 'ОБЩО', bold: true }, '', '', rpR(pEur(spent), { bold: true })]], [60, 140, '*', 70], { right: [3], totalRow: true }) : { text: 'Няма записани разходи.', style: 'note' },
+  ];
+  return [rpDoc('Финанси', ymLabel(ym), content), `finansi-${fileSlug(ym)}.pdf`];
+}
+
+const REPORTS = { calendar: ['Календар', reportCalendar], clients: ['Клиенти', reportClients], finances: ['Финанси', reportFinances] };
+function openExport(kind) {
+  const [label] = REPORTS[kind];
+  $('ex-title').textContent = `Отчет — ${label}`;
+  $('ex-month').value = kind === 'finances' && typeof finYM !== 'undefined' ? finYM : ymOf(new Date());
+  $('dlg-export').dataset.kind = kind;
+  $('dlg-export').showModal();
+}
+$('ex-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const kind = $('dlg-export').dataset.kind, ym = $('ex-month').value;
+  if (!/^\d{4}-\d{2}$/.test(ym)) return toast('Изберете месец.');
+  const btn = $('ex-go'); busy(btn, true, 'Изготвяне…');
+  try {
+    const [[doc, name]] = await Promise.all([REPORTS[kind][1](ym), loadPdf()]);
+    pdfMake.createPdf(doc).download(name);
+    $('dlg-export').close();
+    toast('Отчетът е изтеглен.');
+  } catch (err) {
+    toast('Отчетът не можа да се изготви. ' + authMessage(err));
+  } finally { busy(btn, false); }
+});
+document.querySelectorAll('[data-export]').forEach((b) => b.addEventListener('click', () => openExport(b.dataset.export)));
 
 /* ======== Staff file (shared by the staff dialog and a cleaner's own page) ======== */
 const WD_LONG = ['', 'Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота', 'Неделя'];
