@@ -4934,7 +4934,7 @@ function rpDoc(title, sub, content, landscape = false) {
   };
 }
 const monthRange = (ym) => { const s = ymStart(ym), e = ymStart(ymAdd(ym, 1)); return [s, e]; };
-const fileSlug = (ym) => ymLabel(ym).replace(/\s+/g, '-');
+const fileSlug = (ym) => ym;
 
 /* ---- Calendar ---- */
 async function reportCalendar(ym) {
