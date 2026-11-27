@@ -2357,7 +2357,7 @@ document.querySelectorAll('#u-filters .chip').forEach((c) => c.addEventListener(
    Windows with forms don't close on a click outside, and ask before throwing away what was typed. */
 const FORM_DIALOGS = new Set(['dlg-add', 'dlg-edit', 'dlg-event', 'dlg-client', 'dlg-prop', 'dlg-staff']);
 async function closeSafely(d) {
-  if (d.dataset.dirty === '1' && !(await confirmDialog({ title: 'Затваряне без запазване?', text: 'Въведеното няма да бъде запазено.', ok: 'Затвори' }))) return;
+  if (d.dataset.dirty === '1' && !(await confirmDialog({ title: 'Затваряне без запазване?', text: 'Въведеното няма да бъде запазено.', ok: 'Затвори', icon: 'x' }))) return;
   d.close();
 }
 document.querySelectorAll('dialog.sheet').forEach((d) => {
@@ -3125,11 +3125,11 @@ $('ev-form').addEventListener('submit', async (e) => {
 
 
 /* ---------- Confirmation dialog ---------- */
-function confirmDialog({ title = 'Сигурни ли сте?', text = '', ok = 'Изтрий' } = {}) {
+function confirmDialog({ title = 'Сигурни ли сте?', text = '', ok = 'Изтрий', icon = 'trash' } = {}) {
   return new Promise((resolve) => {
     const d = $('dlg-confirm');
     $('cf-title').textContent = title; $('cf-text').textContent = text;
-    $('cf-ok').querySelector('.label').innerHTML = ic('trash') + ' ' + esc(ok);
+    $('cf-ok').querySelector('.label').innerHTML = (icon ? ic(icon) + ' ' : '') + esc(ok);
     let done = false;
     const finish = (v) => { if (done) return; done = true; d.close(); resolve(v); };
     $('cf-ok').onclick = () => finish(true);
