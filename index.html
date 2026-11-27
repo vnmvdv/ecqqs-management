@@ -234,6 +234,8 @@
     border-right: 2px solid var(--ink);
     padding: max(24px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
     display: flex; flex-direction: column; gap: 6px;
+    /* desktop: the sidebar stays put while the page scrolls */
+    position: sticky; top: 0; height: 100vh; height: 100dvh; overflow-y: auto; align-self: start;
   }
   .brand { font-family: 'Playfair Display', Georgia, serif; font-weight: 900; font-size: 22px; line-height: 1.1; padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px solid var(--rule); }
   .brand small { display: block; font-family: 'Inter', sans-serif; font-weight: 500; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); margin-top: 4px; }
@@ -1417,7 +1419,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.42 — месечни PDF отчети</div>
+      <div class="version">v0.43 — неподвижно меню</div>
     </div>
   </aside>
 
