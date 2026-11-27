@@ -322,7 +322,10 @@
     border-top: 4px solid var(--ink); border-radius: 2px; margin: auto;
   }
   dialog.sheet::backdrop { background: rgba(0,0,0,.45); }
-  .sheet-inner { padding: 24px 24px 20px; overflow-y: auto; max-height: calc(100dvh - 48px); }
+  /* the window stays put; only its content scrolls (one scroll area, never the page behind) */
+  dialog.sheet[open] { display: flex; flex-direction: column; overflow: hidden; overscroll-behavior: contain; }
+  html:has(dialog.sheet[open]), html:has(dialog.sheet[open]) body { overflow: hidden; }
+  .sheet-inner { padding: 24px 24px 20px; overflow-y: auto; max-height: calc(100dvh - 48px); flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .sheet h2 { font-family: 'Playfair Display', Georgia, serif; font-size: 24px; margin-bottom: 4px; }
   .sheet .lead { color: var(--muted); font-size: 14px; margin-bottom: 18px; line-height: 1.5; }
   .sheet .x { position: absolute; top: 10px; right: 10px; width: 44px; height: 44px; background: none; border: none; cursor: pointer; font-size: 24px; color: var(--muted); }
@@ -1414,7 +1417,7 @@
         </div>
       </button>
       <button class="btn secondary" id="logout-btn">Изход</button>
-      <div class="version">v0.40 — марж в графиката</div>
+      <div class="version">v0.41 — прозорците не се затварят случайно</div>
     </div>
   </aside>
 
@@ -2350,10 +2353,24 @@ document.querySelectorAll('#u-filters .chip').forEach((c) => c.addEventListener(
   renderUsers();
 }));
 
-/* dialogs: close buttons, click outside */
+/* dialogs: close buttons, click outside.
+   Windows with forms don't close on a click outside, and ask before throwing away what was typed. */
+const FORM_DIALOGS = new Set(['dlg-add', 'dlg-edit', 'dlg-event', 'dlg-client', 'dlg-prop', 'dlg-staff']);
+async function closeSafely(d) {
+  if (d.dataset.dirty === '1' && !(await confirmDialog({ title: 'Затваряне без запазване?', text: 'Въведеното няма да бъде запазено.', ok: 'Затвори' }))) return;
+  d.close();
+}
 document.querySelectorAll('dialog.sheet').forEach((d) => {
-  d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => d.close()));
-  d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
+  const form = FORM_DIALOGS.has(d.id);
+  d.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => (form ? closeSafely(d) : d.close())));
+  d.addEventListener('click', (e) => { if (e.target === d && !form) d.close(); });
+  if (form) {
+    d.addEventListener('input', () => { d.dataset.dirty = '1'; });
+    d.addEventListener('change', () => { d.dataset.dirty = '1'; });
+    d.addEventListener('submit', () => { d.dataset.dirty = ''; }, true);
+    d.addEventListener('close', () => { d.dataset.dirty = ''; });
+    d.addEventListener('cancel', (e) => { e.preventDefault(); closeSafely(d); });   // Esc
+  }
 });
 
 /* call the owner-only server function */
